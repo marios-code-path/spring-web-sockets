@@ -1,5 +1,6 @@
 package com.example.socketserver;
 
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -28,7 +29,7 @@ public class SocketServerApplication {
     @Bean
     WebSocketHandler webSocketHandler() {
         return session ->
-                session.send(stockService.getStream("PVTL").map(s ->
+                session.send(stockService.getTicks("PVTL").map(s ->
                         session.textMessage(s.getTicker() + ":" + s.getPrice())
                 ))
                         .delayElement(Duration.ofSeconds(1));
@@ -43,8 +44,7 @@ public class SocketServerApplication {
         return simpleUrlHandlerMapping;
 
     }
-
-
+    
     public static void main(String[] args) {
         SpringApplication.run(SocketServerApplication.class, args);
     }

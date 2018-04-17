@@ -13,12 +13,13 @@ public class StockService {
 
     private final Collection<String> symbolUniverse = Collections.singletonList("PVTL");
 
-    Flux<Stock> getStream(String ticker) {
+    Flux<Stock> getTicks(String ticker) {
         return Flux.generate(
                 () -> 0.0,
                 (state, sink) -> {
-                    sink.next(new Stock(ticker, 1.1, new Date()));
+                    sink.next(new Stock(ticker, state, new Date()));
                     if (state > 100.0) sink.complete();
+                    System.out.println("STOCK : " + state);
                     return state + randomDelta();
                 });
     }
