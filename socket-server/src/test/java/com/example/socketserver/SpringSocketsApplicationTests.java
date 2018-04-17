@@ -1,4 +1,4 @@
-package com.example.springsockets;
+package com.example.socketserver;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
