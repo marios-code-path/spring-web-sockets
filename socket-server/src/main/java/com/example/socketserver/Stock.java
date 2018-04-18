@@ -12,5 +12,5 @@ import java.util.Date;
 public class Stock {
     String ticker;
     double price;
-    Date timestamp;
+    Long timestamp;
 }

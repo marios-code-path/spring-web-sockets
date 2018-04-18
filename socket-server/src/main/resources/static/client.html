@@ -2,7 +2,7 @@
 <body onload="run()">
 <script>
     function run() {
-        var ws = new WebSocket("ws://localhost:8080/ws/hello");
+        var ws = new WebSocket("ws://localhost:8080/ws/tickers");
         ws.onmessage = function (msg) {
             console.log("new message: " + msg.data.toString());
         }
