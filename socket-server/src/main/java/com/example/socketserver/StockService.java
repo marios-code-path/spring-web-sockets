@@ -21,15 +21,14 @@ public class StockService {
 
     Flux<Stock> getTicks(String ticker) {
         return Flux
-                .empty()
-                .delayElements(Duration.ofSeconds(1))
                 .generate(
                 () -> 25.0,
                 (state, sink) -> {
                     sink.next(new Stock(ticker, state, System.currentTimeMillis()));
                     if (state > 100.0) sink.complete();
                     return state + randomDelta();
-                });
+                })
+                ;
     }
 
     Flux<Stock> getTicksForClient(String clientId) {

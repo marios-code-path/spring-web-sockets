@@ -10,22 +10,38 @@ Mario Gray <mgray@pivotal.io>
 == Purpose
 Web-socket event streaming is one of those concers we talk about when consumer needs that exist at the edge 
 of our service matrix. Typically, we will use a more traditional messaging system to deliver and expect
-events within our service cloud. Using applications such as Kafka, RabbitMq, AWS/SQS, Kinesis all enable
+events between services. Using applications such as Kafka, RabbitMq, AWS/SQS, Kinesis all enable
 our services to deliver real-time/mixed-time events to services that require them.
 
-[A sample graph of service matrixes (clouds) and then of a mix of clients that 
-connect]
+[A sample graph of services and then of a mix of clients that connect]
 
-When we need to connect to a variety of messaing consumer/producers then it may be well it's worth
-to decide on an well-implemented standard that for example the IETF has decided upon - https://tools.ietf.org/html/rfc6455[RFC 6455].
-In it's place we find another option - long-polling[https://tools.ietf.org/html/rfc6202], which is decidedly not realtime
-nor resource-sipping (many HTTP connects mean more clients are initiating requests). The importance of both is that
-necessity as Carriers - physical layer 1 via OSI model -  must make sweeping policy changes to allow the former. Thus,
-in order to gain the advantages of a realtime application-layer 6 connection, long-polling fit the bill until all edge carriers 
-could support websockets.
+== Whats in a socket?
+
+.polling-short-polling
+Short-polling as it's called, the client repeats a request for new events in a stream, while the server vends a single or series of events that happened since the last request. This works when very little data is traveling in either direction, and where the interval can be kept sparse. For example, a news feed may update just once every half minute which is fine for consumers. However this will breakdown once new information must be delivered as soon as possible in which case the interval must be tightned, causing additional contention at the edge.
+
+.long-polling
+This gets us into long-polling[https://tools.ietf.org/html/rfc6202], which has been the happy medium between near-real-time delivery and persistent sockets (ws). A long-polling client intiates a request that can be satisfied by either a timeout, connection status change, or the reception of new event(s). The reason for the timeout exists as an exercise for https://tools.ietf.org/html/rfc6202[this IETF recommendation] as most intermediate HTTP proxies police HTTP connections, causing timeouts sooner than expected. Therefore, the IETF recommends somewhere between 30 and 120 second timeout tolerances. 
+The downside to long-polling is that the client may end up making many requests (like traditional polling) as events begin accumulating on the server for the client to request.
+
+.web-socket
+Finally, the https://tools.ietf.org/html/rfc6455[WebSocket protocol] eliminates the need for polling. The websocket is really just a standard bi-directional TCP connection, that began life as a HTTP request. The details of this connection negotiation are outlined in the [RFC] as well.
+WebSockets really shine when you have many application events that need to be delivered in high-frequency, as soon as possible. Real-time applications like stock tickers(this demo), chat apps, and even audio/video apps - WebSockets handles binary content too!
+
 
 This article we will talk about standing up a Spring application service that exposes websockets,
-consumes websockets, and allows fo long-polling degredation. Lets take a look at the configuration in 
+consumes websockets, and allows for long-polling degredation. Lets take a look at the configuration in 
 this next section:
 
-== Reactive WebSocket - Not Imparative!
+== It's Spring time for the Flux
+
+== References/Readling List
+
+* Spring WebFlux guide
+** https://docs.spring.io/spring/docs/5.0.0.BUILD-SNAPSHOT/spring-framework-reference/html/web-reactive.html
+
+* The WebSocket Protocol (W3C)
+** https://tools.ietf.org/html/rfc6455
+
+
+

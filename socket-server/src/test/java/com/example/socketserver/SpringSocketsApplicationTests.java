@@ -6,6 +6,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -13,10 +14,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SpringSocketsApplicationTests {
 
 	@Test
-	public void testShouldFluxMerge() {
+	public void testShouldFluxMerge() throws InterruptedException {
 		Map<String, Flux> myMap = new ConcurrentHashMap<>();
 
-		Flux tests = Flux.generate(() -> 1.0,
+		Flux tests = Flux.
+				generate(() -> 1.0,
 				(state, sink) -> {
 					sink.next(new Stock("TEST", state, System.currentTimeMillis()));
 					if (state > 10.0) sink.complete();
@@ -34,6 +36,8 @@ public class SpringSocketsApplicationTests {
 		myMap.computeIfPresent("test", (k, v) -> v.mergeWith(ord));
 		myMap.computeIfPresent("test", (k, v) -> v.mergeWith(tests));
 		myMap.get("test").subscribe(System.out::println);
+
+		Thread.sleep(10000);
 	}
 
 }

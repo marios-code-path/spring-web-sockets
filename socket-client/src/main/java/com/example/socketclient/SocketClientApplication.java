@@ -32,7 +32,7 @@ public class SocketClientApplication {
 
             client.execute(uri, headers, session ->
                     session.receive()
-                            .doOnNext(wm -> log.info(wm.getPayloadAsText()))
+                            .doOnNext(msg -> log.info(msg.getPayloadAsText()))
                             .then())
                     .block();
 
@@ -40,7 +40,6 @@ public class SocketClientApplication {
     }
 
     public static void main(String[] args) throws Exception {
-
         SpringApplication.run(SocketClientApplication.class, args);
     }
 }
