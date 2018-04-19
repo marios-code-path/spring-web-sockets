@@ -21,7 +21,7 @@ public class SocketClientApplication {
     }
 
     // get from environment
-    String username = "hesher";
+    String username = "spring";
 
     @Bean
     ApplicationRunner appRunner(WebSocketClient client) {

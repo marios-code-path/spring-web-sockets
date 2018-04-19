@@ -14,7 +14,6 @@ import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAd
 import java.util.Collections;
 import java.util.Optional;
 
-@Profile("conventional")
 @Configuration
 @Slf4j
 public class StockSocketConfiguration {
@@ -38,7 +37,7 @@ public class StockSocketConfiguration {
                 session.send(stockService.getTicksForClient(
                         Optional.of(
                                 session.getHandshakeInfo().getHeaders().getFirst("client-id")
-                        ).orElse("DEMO")
+                        ).orElse("spring")
                 ).map(s -> {
                             try {
                                 return session.textMessage(mapper.writeValueAsString(s));
