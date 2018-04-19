@@ -6,16 +6,16 @@ Mario Gray <mgray@pivotal.io>
 :numbered:
 :imagesdir: ./graphics
 :website: https://docs.spring.io/spring/docs/5.0.0.BUILD-SNAPSHOT/spring-framework-reference/html/web-reactive.html
+:note: Drain the [BAYEUX]
 
 == Purpose
-Web-socket event streaming is one of those concers we talk about when consumer needs that exist at the edge 
-of our service matrix. Typically, we will use a more traditional messaging system to deliver and expect
-events between services. Using applications such as Kafka, RabbitMq, AWS/SQS, Kinesis all enable
-our services to deliver real-time/mixed-time events to services that require them.
+This article we will talk about standing up a Spring application service that exposes reactive WebSocket service and client through the Spring WebFlux API.
+Typically, we will use a more traditional messaging system to deliver and expect events between services. Using messaging brokers such as Kafka, RabbitMq, AWS/SQS, Kinesis all enable our services to deliver real-time/mixed-time events to internal services that require them. Its not good enough to introduce the broker model to our application deployed on field - because the underlaying transport or even service may change under the app's (feet). Thus WebSockets give us a standards and performant approach to delivering events to our apps.
 
 [A sample graph of services and then of a mix of clients that connect]
 
 == Whats in a socket?
+Lets look at the prior and current methods to delivering events that span about the past 10 years (not including comet-d).
 
 .polling-short-polling
 Short-polling as it's called, the client repeats a request for new events in a stream, while the server vends a single or series of events that happened since the last request. This works when very little data is traveling in either direction, and where the interval can be kept sparse. For example, a news feed may update just once every half minute which is fine for consumers. However this will breakdown once new information must be delivered as soon as possible in which case the interval must be tightned, causing additional contention at the edge.
@@ -28,17 +28,13 @@ The downside to long-polling is that the client may end up making many requests 
 Finally, the https://tools.ietf.org/html/rfc6455[WebSocket protocol] eliminates the need for polling. The websocket is really just a standard bi-directional TCP connection, that began life as a HTTP request. The details of this connection negotiation are outlined in the [RFC] as well.
 WebSockets really shine when you have many application events that need to be delivered in high-frequency, as soon as possible. Real-time applications like stock tickers(this demo), chat apps, and even audio/video apps - WebSockets handles binary content too!
 
-
-This article we will talk about standing up a Spring application service that exposes websockets,
-consumes websockets, and allows for long-polling degredation. Lets take a look at the configuration in 
-this next section:
-
 == It's Spring time for the Flux
 
 == References/Readling List
 
 * Spring WebFlux guide
 ** https://docs.spring.io/spring/docs/5.0.0.BUILD-SNAPSHOT/spring-framework-reference/html/web-reactive.html
+** https://docs.spring.io/spring/docs/current/spring-framework-reference/web-reactive.html
 
 * The WebSocket Protocol (W3C)
 ** https://tools.ietf.org/html/rfc6455
