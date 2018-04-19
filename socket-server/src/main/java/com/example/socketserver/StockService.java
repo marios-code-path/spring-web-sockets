@@ -41,6 +41,7 @@ public class StockService {
     void clientSubscribeTo(String clientId, String ticker) {
         subscriptionMap.computeIfAbsent(clientId, k -> Flux.empty());
         subscriptionMap.computeIfPresent(clientId, (k, v) -> v.mergeWith(getTicks(ticker)));
+
     }
 
     private double randomDelta() {

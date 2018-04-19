@@ -20,6 +20,7 @@ public class SocketClientApplication {
         return new ReactorNettyWebSocketClient();
     }
 
+    // get from environment
     String username = "hesher";
 
     @Bean
