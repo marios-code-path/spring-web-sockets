@@ -20,10 +20,9 @@ public class ConventionalRestController {
     }
 
     @PutMapping("/subscribe/{ticker}")
-    Mono<Void> subscribeTo(@RequestHeader("client-id") String clientId,
+    void subscribeTo(@RequestHeader("client-id") String clientId,
                            @PathVariable("ticker") String ticker) {
         stockService.clientSubscribeTo(clientId, ticker);
-        return Mono.empty();
-    }
+    };
 
 }

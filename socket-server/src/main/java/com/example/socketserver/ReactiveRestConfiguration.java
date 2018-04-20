@@ -25,18 +25,6 @@ import static org.springframework.web.reactive.function.server.ServerResponse.ok
 public class ReactiveRestConfiguration {
 
     @Bean
-    ApplicationRunner socketServerRunner(ApplicationContext context) {
-        return args -> {
-            HttpHandler handler = WebHttpHandlerBuilder.applicationContext(context).build();
-            String host = "127.0.0.1";
-            int port = 8080;
-            ReactorHttpHandlerAdapter adapter = new ReactorHttpHandlerAdapter(handler);
-            HttpServer.create(host, port).newHandler(adapter).block();
-        };
-    }
-
-
-    @Bean
     RouterFunction<?> routes(StockService stockService) {
         return
                 route(PUT("/subscribe/{ticker}"),
