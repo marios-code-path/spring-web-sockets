@@ -42,6 +42,8 @@ public class SocketClientApplication {
 
     public static void main(String[] args) throws Exception {
         SpringApplication.run(SocketClientApplication.class, args);
+
+        Thread.sleep(60000);
     }
 }
 

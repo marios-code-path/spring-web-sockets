@@ -28,13 +28,19 @@ The downside to long-polling is that the client may end up making many requests 
 Finally, the https://tools.ietf.org/html/rfc6455[WebSocket protocol] eliminates the need for polling. The websocket is really just a standard bi-directional TCP connection, that began life as a HTTP request. The details of this connection negotiation are outlined in the [RFC] as well.
 WebSockets really shine when you have many application events that need to be delivered in high-frequency, as soon as possible. Real-time applications like stock tickers(this demo), chat apps, and even audio/video apps - WebSockets handles binary content too!
 
-== It's Spring time for the Flux
+== Enter the WebFlux
+Spring WebFlux is a complete reimplementation of the MVC stack to adhere to reactive components. We will use the reactive approach for this applicaiton in exposing REST endpoints, and our WS service as well.
+You'll want to start a new Spring project using start.spring.io[this link] to autogenerate a maven based POM.  If you go with a different approach, just make sure to 
+have `webflux`, and `lombok` projects.  
 
 == References/Readling List
 
 * Spring WebFlux guide
 ** https://docs.spring.io/spring/docs/5.0.0.BUILD-SNAPSHOT/spring-framework-reference/html/web-reactive.html
 ** https://docs.spring.io/spring/docs/current/spring-framework-reference/web-reactive.html
+
+* Articles
+** https://ordina-jworks.github.io/reactive/2016/12/12/Reactive-Programming-Spring-Reactor.html
 
 * W3C Proposals
 ** https://tools.ietf.org/html/rfc6455
