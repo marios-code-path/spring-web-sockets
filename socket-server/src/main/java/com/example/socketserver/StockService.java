@@ -33,8 +33,10 @@ public class StockService {
                         })
                 .ofType(Stock.class);
 
-        return Flux.interval(Duration.ofSeconds(1))
-                .zipWith(g, (i, item) -> item);
+        // still need proper debounce like with sample
+        return Flux.interval(Duration.ofSeconds(3))
+                .zipWith(g, (i, stock) -> stock)
+                .sample(Duration.ofSeconds(3));
     }
 
     Flux<Stock> getTicksForClient(String clientId) {

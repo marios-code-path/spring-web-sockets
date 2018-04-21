@@ -6,8 +6,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpHeaders;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
 import org.springframework.web.reactive.socket.client.WebSocketClient;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.net.URI;
 
@@ -15,26 +18,31 @@ import java.net.URI;
 @Slf4j
 public class SocketClientApplication {
 
-    @Bean
-    WebSocketClient client() {
-        return new ReactorNettyWebSocketClient();
-    }
-
     // get from environment
     String username = "spring";
 
     @Bean
-    ApplicationRunner appRunner(WebSocketClient client) {
+    ApplicationRunner appRunner() {
         return args -> {
             URI uri = new URI("ws://localhost:8080/ws/feed");
 
             HttpHeaders headers = new HttpHeaders();
             headers.add("client-id", username);
 
-            client.execute(uri, headers, session ->
-                    session.receive()
-                            .doOnNext(msg -> log.info(msg.getPayloadAsText()))
-                            .then())
+            WebClient.create("http://localhost:8080")
+                    .put()
+                    .uri("/subscribe/PVTL")
+                    .headers(ht -> ht.addAll(headers))
+                    .retrieve()
+                    .onStatus(p -> p.is2xxSuccessful(), cr -> Mono.empty())
+                    .bodyToMono(Void.class)
+                    .block();
+
+            new ReactorNettyWebSocketClient()
+                    .execute(uri, headers, session ->
+                            session.receive()
+                                    .doOnNext(msg -> log.info(msg.getPayloadAsText()))
+                                    .then())
                     .block();
 
         };

@@ -28,18 +28,22 @@ public class ReactiveRestConfiguration {
     RouterFunction<?> routes(StockService stockService) {
         return
                 route(PUT("/subscribe/{ticker}"),
-                        req -> ok().build(Mono.fromRunnable(() ->
-                            stockService.clientSubscribeTo(
-                                    req.headers()
+                        req -> ok().build(Mono.fromRunnable(() -> {
+                                    String clientId = req.headers()
                                             .header("client-id")
                                             .stream()
                                             .findFirst()
-                                            .orElse("NONE"),
-                                    req.pathVariable("ticker"))
+                                            .orElse("NONE");
+                                    String ticker = req.pathVariable("ticker");
+                                    log.info("Subscribing to: " + ticker);
+
+                                    stockService.clientSubscribeTo(clientId, ticker);
+
+                                }
                         ))
                 )
-                .andRoute(GET("/subscriptions"),
-                        req -> ok().body(Mono.just("SOME"), String.class));
+                        .andRoute(GET("/subscriptions"),
+                                req -> ok().body(Mono.just("SOME"), String.class));
     }
 
 }
