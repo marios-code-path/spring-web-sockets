@@ -14,6 +14,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 
 @SpringBootApplication
 @Slf4j
@@ -21,35 +22,31 @@ public class SocketClientApplication {
     @Bean
     ApplicationRunner appRunner() {
         return args -> {
-            Flux.just(subscribeClientTo("FERG", "PVTL"),
-                    subscribeClientTo("BJARN", "PVTL"),
-                    subscribeClientTo("", "PVTL"))
-                    .flatMap(
-                            rx -> rx.flatMap(r ->
-                                    {
-                                        log.info("STATUS: " + r.statusCode());
-                                        return r.bodyToMono(Void.class);
-                                    }
-                            )
+            final String[] clientIds = new String[]{"CLIENT1", "CLIENT2", ""};
+            Flux.just(clientIds)
+                    .map(s -> this.subscribeTo(s, "SQRT")
+                            .flatMap(rx -> rx.bodyToMono(Void.class))
                     )
-                    .blockLast();
-            connectToClientTickerFeed("").subscribe();
-            connectToClientTickerFeed("FERG").subscribe();
-            connectToClientTickerFeed("BJARN").subscribe();
+                    .thenMany(
+                            Flux.just(clientIds).map(this::wsConnect)
+                    ).subscribe();
         };
     }
 
-    HttpHeaders requestHeaders(String clientId) {
+
+    Mono<Void> wsConnect(String clientId) {
+        URI uri = null;
+        try {
+            uri = new URI("ws://localhost:8080/ws/feed");
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+
         HttpHeaders headers = new HttpHeaders();
         headers.add("client-id", clientId);
-        return headers;
-    }
 
-    ;
-
-    Mono<Void> wsClient(String clientId, URI uri) {
         return new ReactorNettyWebSocketClient()
-                .execute(uri, requestHeaders(clientId), session -> {
+                .execute(uri, headers, session -> {
                     return session
                             .send(Flux
                                     .just("CLIENT:" + clientId)
@@ -58,18 +55,12 @@ public class SocketClientApplication {
                             .and(session
                                     .receive()
                                     .map(WebSocketMessage::getPayloadAsText)
-                                    .doOnNext(msg -> log.info(clientId + " : " + msg))
+                                    .doOnNext(msg -> log.info(clientId + ".in: " + msg))
                             );
                 });
     }
 
-    Mono<Void> connectToClientTickerFeed(String clientId) throws Exception {
-        URI uri = new URI("ws://localhost:8080/ws/feed");
-
-        return wsClient(clientId, uri);
-    }
-
-    Mono<ClientResponse> subscribeClientTo(String clientId, String ticker) {
+    Mono<ClientResponse> subscribeTo(String clientId, String ticker) {
         HttpHeaders headers = new HttpHeaders();
         headers.add("client-id", clientId);
 
@@ -77,14 +68,11 @@ public class SocketClientApplication {
                 .put()
                 .uri("/subscribe/" + ticker)
                 .headers(ht -> ht.addAll(headers))
-                .exchange()
-                ;
+                .exchange();
     }
 
     public static void main(String[] args) throws Exception {
         SpringApplication.run(SocketClientApplication.class, args);
-
         Thread.sleep(10000);
     }
 }
-

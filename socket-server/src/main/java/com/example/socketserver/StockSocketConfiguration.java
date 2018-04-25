@@ -19,7 +19,6 @@ import java.util.Collections;
 @Configuration
 @Slf4j
 public class StockSocketConfiguration {
-
     private final StockService stockService;
     private final ObjectMapper mapper;
 
@@ -35,15 +34,16 @@ public class StockSocketConfiguration {
 
     @Bean
         // Browsers don't support headers for WS://
+        // This means, we would likely have to adapt a process to exposing one-time use URI's e.g. ws://host/FF1234
     WebSocketHandler webSocketHandler() {
         return session -> {
-            final String clientId =
+            String clientId =
                     session.getHandshakeInfo().getHeaders().getFirst("client-id");
 
             if (StringUtil.isNullOrEmpty(clientId)) {
                 return session
                         .send(
-                                Flux.just("{'msg': 'No ClientID'}")
+                                Flux.just("{'msg':'CLIENTID'}")
                                         .map(session::textMessage)
                         ).and(s -> session.close(CloseStatus.NOT_ACCEPTABLE));
             }
@@ -55,20 +55,19 @@ public class StockSocketConfiguration {
                     .and(session.receive()
                             .map(WebSocketMessage::getPayloadAsText)
                             .doFinally(sig -> {
-                                log.info("Terminating session due to:" + sig.toString());
+                                log.info("session complete:" + sig.toString());
                                 stockService.removeClientSink(clientId);
                                 session.close();
                             }));
         };
-
     }
 
-    String toJson(Stock stock) {
+    String toJson(Object o) {
         try {
-            return mapper.writeValueAsString(stock);
+            return mapper.writeValueAsString(o);
         } catch (JsonProcessingException e) {
             e.printStackTrace();
-            return "{'msg':'JSON Conversion Error!'}";
+            return "{'msg':'JSON'}"; // what? oh man I'm getting msg:json :-
         }
     }
 
@@ -79,7 +78,5 @@ public class StockSocketConfiguration {
                 webSocketHandler()));
         simpleUrlHandlerMapping.setOrder(10);
         return simpleUrlHandlerMapping;
-
     }
-
 }

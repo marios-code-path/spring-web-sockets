@@ -15,23 +15,20 @@ import java.util.function.Consumer;
 @Service
 @Slf4j
 public class StockService {
-
-    // Internal State
     final Map<String, Flux<Stock>> stockSourceMap = new ConcurrentHashMap<>();
     final Map<String, Set<String>> tickerToClientMap = new ConcurrentHashMap<>();
 
     void registerTicker(String ticker) {
         if (!stockSourceMap.containsKey(ticker)) {
-            Flux
-                    .generate(
-                            () -> 25.0,
-                            (state, sink) -> {
-                                sink.next(new Stock(ticker, state, System.currentTimeMillis()));
-                                if (state > 30.0) sink.complete();
-                                return state + randomDelta();
-                            })
-                    .zipWith(Flux.interval(Duration.ofSeconds(2)), (stock, idx) -> stock)
+            Flux.generate(
+                    () -> 25.0,
+                    (state, sink) -> {
+                        sink.next(new Stock(ticker, state));
+                        if (state > 100.0) sink.complete();
+                        return state + randomDelta();
+                    })
                     .ofType(Stock.class)
+                    .zipWith(Flux.interval(Duration.ofSeconds(2)), (stock, idx) -> stock)
                     .doOnNext(stock ->
                             {
                                 if (tickerToClientMap.containsKey(stock.getTicker())) {
@@ -42,11 +39,11 @@ public class StockService {
                                 }
                             }
                     )
-                    .doFinally(s -> {   // post onComplete
+                    .doFinally(s -> {   // or onComplete
                         stockSourceMap.remove(ticker);
                         tickerToClientMap.remove(ticker);
                     })
-                    .subscribe();
+                    .subscribe();   // start ticking
         }
     }
 
@@ -58,13 +55,14 @@ public class StockService {
                     clientSinks.put(clientId, (s) -> sink.next(s))
             );
         }
-        // 2nd login for same client never sees stream.
+        // 2nd login for same client never sees stream. ~:/
         return Flux.empty();
     }
 
     void removeClientSink(String clientId) {
-        if (clientSinks.containsKey(clientId))
+        if (clientSinks.containsKey(clientId)) {
             clientSinks.remove(clientId);
+        }
     }
 
     void subscribeToTicker(String clientId, String ticker) {
@@ -79,5 +77,4 @@ public class StockService {
     private double randomDelta() {
         return ThreadLocalRandom.current().nextDouble(-5.0, 10.0);
     }
-
 }
