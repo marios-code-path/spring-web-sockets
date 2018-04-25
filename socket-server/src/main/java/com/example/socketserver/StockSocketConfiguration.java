@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.reactive.HandlerMapping;
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
 import org.springframework.web.reactive.socket.WebSocketHandler;
@@ -33,22 +32,32 @@ public class StockSocketConfiguration {
 
     @Bean
     WebSocketHandler webSocketHandler() {
-        return session ->
-                session.send(stockService.getTicksForClient(
-                        Optional.of(
-                                session.getHandshakeInfo().getHeaders().getFirst("client-id")
-                        ).orElse("spring")
-                ).map(s -> {
-                            try {
-                                return session.textMessage(mapper.writeValueAsString(s));
-                            } catch (JsonProcessingException e) {
-                                e.printStackTrace();
-                                return session.textMessage(
-                                        new SocketError(e).toString()
-                                );
-                            }
+        return session -> {
+            final String clientId = Optional.of(
+                    session.getHandshakeInfo().getHeaders().getFirst("client-id")
+            ).orElse("spring");
+
+            session.receive().doFinally(sig -> {
+                log.info("Terminating session");
+                session.close();
+                stockService.unRegisterClientSink(clientId);
+            }).subscribe();
+
+            return session.send(stockService.getClientSink(
+                    clientId
+            ).map(s -> {
+                        try {
+                            return session.textMessage(mapper.writeValueAsString(s));
+                        } catch (JsonProcessingException e) {
+                            e.printStackTrace();
+                            return session.textMessage(
+                                    new SocketError(e).toString()
+                            );
                         }
-                ));
+                    }
+            ));
+        };
+
     }
 
     @Bean
