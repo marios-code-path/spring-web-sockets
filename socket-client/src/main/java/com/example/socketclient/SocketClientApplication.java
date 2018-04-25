@@ -25,14 +25,16 @@ public class SocketClientApplication {
             final String[] clientIds = new String[]{"CLIENT1", "CLIENT2", ""};
             Flux.just(clientIds)
                     .map(s -> this.subscribeTo(s, "SQRT")
-                            .flatMap(rx -> rx.bodyToMono(Void.class))
+                            .flatMap(rx ->{ log.info("STATUS: " +rx.statusCode()); return rx.bodyToMono(Void.class);})
                     )
-                    .thenMany(
+                    .doOnNext(Mono::subscribe)
+                    .mergeWith(
                             Flux.just(clientIds).map(this::wsConnect)
-                    ).subscribe();
+                                    .doOnNext(Mono::subscribe)
+                    )
+                    .subscribe();
         };
     }
-
 
     Mono<Void> wsConnect(String clientId) {
         URI uri = null;

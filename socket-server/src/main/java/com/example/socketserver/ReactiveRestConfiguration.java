@@ -24,11 +24,12 @@ import static org.springframework.web.reactive.function.server.ServerResponse.*;
 public class ReactiveRestConfiguration {
 
     String getClientFromRequest(ServerRequest req) {
-        return req.headers()
-                .header("client-id")
-                .stream()
-                .findFirst()
-                .orElse("");
+        return  // Hello JS 8-)
+                req.headers()
+                        .header("client-id")
+                        .stream()
+                        .findFirst()
+                        .orElse("");
     }
 
     @Bean
@@ -36,17 +37,19 @@ public class ReactiveRestConfiguration {
         return
                 route(PUT("/subscribe/{ticker}"),
                         req -> ok().build(Mono.fromRunnable(() -> {
-                                    String clientId = getClientFromRequest(req);
-                                    String ticker = req.pathVariable("ticker");
-                                    stockService.subscribeToTicker(clientId, ticker);
+                                    String clientId = (String)req.attributes().get("clientid");
+                                    stockService.subscribeToTicker(clientId,
+                                            req.pathVariable("ticker"));
                                 })
                         )
                 )
-                .filter((req, fun) -> {
-                    if(StringUtil.isNullOrEmpty(getClientFromRequest(req)))
-                        return badRequest().body(Mono.just("no client"),String.class);
-                    return fun.handle(req);
-                });
+                        .filter((req, fun) -> {
+                            String clientId = getClientFromRequest(req);
+                            if (StringUtil.isNullOrEmpty(clientId))
+                                return badRequest().body(Mono.just("{'msg':'CLIENTID'}"), String.class);
+                            req.attributes().putIfAbsent("clientid", clientId);
+                            return fun.handle(req);
+                        });
     }
 
 }

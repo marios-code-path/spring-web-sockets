@@ -23,5 +23,4 @@ public class ConventionalRestController {
                            @PathVariable("ticker") String ticker) {
         stockService.subscribeToTicker(clientId, ticker);
     };
-
 }
