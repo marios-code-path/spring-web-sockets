@@ -8,15 +8,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
-import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 @SpringBootApplication
 @Slf4j
@@ -25,7 +22,8 @@ public class SocketClientApplication {
     ApplicationRunner appRunner() {
         return args -> {
             Flux.just(subscribeClientTo("FERG", "PVTL"),
-                    subscribeClientTo("BJARN", "PVTL"))
+                    subscribeClientTo("BJARN", "PVTL"),
+                    subscribeClientTo("", "PVTL"))
                     .flatMap(
                             rx -> rx.flatMap(r ->
                                     {
@@ -35,10 +33,9 @@ public class SocketClientApplication {
                             )
                     )
                     .blockLast();
-
-            connectToClientTickerFeed("BJARN")
-                    .mergeWith(connectToClientTickerFeed("FERG"))
-                    .subscribe();
+            connectToClientTickerFeed("").subscribe();
+            connectToClientTickerFeed("FERG").subscribe();
+            connectToClientTickerFeed("BJARN").subscribe();
         };
     }
 
@@ -46,14 +43,24 @@ public class SocketClientApplication {
         HttpHeaders headers = new HttpHeaders();
         headers.add("client-id", clientId);
         return headers;
-    };
+    }
+
+    ;
 
     Mono<Void> wsClient(String clientId, URI uri) {
         return new ReactorNettyWebSocketClient()
-                .execute(uri, requestHeaders(clientId), session ->
-                        session.receive()
-                                .doOnNext(msg -> log.info(clientId + " : " + msg.getPayloadAsText()))
-                                .then());
+                .execute(uri, requestHeaders(clientId), session -> {
+                    return session
+                            .send(Flux
+                                    .just("CLIENT:" + clientId)
+                                    .map(session::textMessage)
+                            )
+                            .and(session
+                                    .receive()
+                                    .map(WebSocketMessage::getPayloadAsText)
+                                    .doOnNext(msg -> log.info(clientId + " : " + msg))
+                            );
+                });
     }
 
     Mono<Void> connectToClientTickerFeed(String clientId) throws Exception {

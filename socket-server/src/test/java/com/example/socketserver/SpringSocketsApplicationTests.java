@@ -1,9 +1,6 @@
 package com.example.socketserver;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
@@ -15,6 +12,43 @@ import java.util.function.Consumer;
 
 //@RunWith(SpringRunner.class)
 public class SpringSocketsApplicationTests {
+
+    @Test
+    public void fluxGenerateInterval() throws Exception {
+        Flux<String> strings =
+                Flux.interval(Duration.ofSeconds(2))
+                        .zipWith(Flux.generate(
+                                () -> "A",
+                                (state, sink) ->
+                                {
+                                    sink.next(state);
+                                    return state + "A";
+                                })
+                                , (i, s) -> s
+                        )
+                        .ofType(String.class)
+                        .doOnNext(System.out::println);
+
+        Flux<String> strings2 =
+                Flux.generate(
+                        () -> "B",
+                        (state, sink) ->
+                        {
+                            sink.next(state);
+                            return state + "B";
+                        })
+                        .zipWith(Flux.interval(Duration.ofSeconds(2)), (data, i) -> data)
+                        .ofType(String.class)
+                        .doOnNext(System.out::println);
+
+        strings.subscribe();
+
+        strings2.subscribe();
+
+
+        Thread.sleep(10000);
+
+    }
 
     @Test
     public void testShouldFanOut() throws Exception {

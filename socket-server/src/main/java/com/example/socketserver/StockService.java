@@ -17,42 +17,42 @@ import java.util.function.Consumer;
 public class StockService {
 
     // Internal State
-    final Map<String, Flux<Stock>> tickerFluxMap = new ConcurrentHashMap<>();
+    final Map<String, Flux<Stock>> stockSourceMap = new ConcurrentHashMap<>();
     final Map<String, Set<String>> tickerToClientMap = new ConcurrentHashMap<>();
 
     void registerTicker(String ticker) {
-        Flux<Stock> flux = tickerFluxMap.computeIfAbsent(ticker, k -> Flux
-                .interval(Duration.ofSeconds(3))
-                .zipWith(Flux
-                        .generate(
-                                () -> 25.0,
-                                (state, sink) -> {
-                                    sink.next(new Stock(ticker, state, System.currentTimeMillis()));
-                                    if (state > 100.0) sink.complete();
-                                    return state + randomDelta();
-                                }), (i, s) -> s)
-                .ofType(Stock.class)
-                .doOnNext(s ->
-                    tickerToClientMap.computeIfPresent(s.getTicker(),
-                            (m, clientSet) -> {
-                                clientSet.forEach(clientId ->
-                                    clientSinks.computeIfPresent(clientId, (l, clientSink) -> {
-                                        System.out.println("Sending " + clientId + " : : " + s);
-                                        clientSink.accept(s);
-                                        return clientSink;
-                                    })
-                                );
-                                return clientSet;
+        if (!stockSourceMap.containsKey(ticker)) {
+            Flux
+                    .generate(
+                            () -> 25.0,
+                            (state, sink) -> {
+                                sink.next(new Stock(ticker, state, System.currentTimeMillis()));
+                                if (state > 30.0) sink.complete();
+                                return state + randomDelta();
                             })
-                )
-        );
-
-        flux.subscribe();
+                    .zipWith(Flux.interval(Duration.ofSeconds(2)), (stock, idx) -> stock)
+                    .ofType(Stock.class)
+                    .doOnNext(stock ->
+                            {
+                                if (tickerToClientMap.containsKey(stock.getTicker())) {
+                                    tickerToClientMap.get(stock.getTicker())
+                                            .stream()
+                                            .filter(clientSinks::containsKey)
+                                            .forEach(clientId -> clientSinks.get(clientId).accept(stock));
+                                }
+                            }
+                    )
+                    .doFinally(s -> {   // post onComplete
+                        stockSourceMap.remove(ticker);
+                        tickerToClientMap.remove(ticker);
+                    })
+                    .subscribe();
+        }
     }
 
     private final Map<String, Consumer<Stock>> clientSinks = new ConcurrentHashMap<>();
 
-    Flux<Stock> getClientSink(String clientId) {
+    Flux<Stock> getOrCreateClientSink(String clientId) {
         if (!clientSinks.containsKey(clientId)) {
             return Flux.create(sink ->
                     clientSinks.put(clientId, (s) -> sink.next(s))
@@ -62,20 +62,18 @@ public class StockService {
         return Flux.empty();
     }
 
-    void unRegisterClientSink(String clientId) {
-        if(clientSinks.containsKey(clientId)) {
+    void removeClientSink(String clientId) {
+        if (clientSinks.containsKey(clientId))
             clientSinks.remove(clientId);
-        }
     }
 
-    void clientSubscribeTo(String clientId, String ticker) {
-        tickerToClientMap.computeIfAbsent(ticker, t -> Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>()))
-                .add(clientId);
-
-        registerTicker(ticker);
-
-        log.info(clientId + " subscribing to: " + ticker);
-
+    void subscribeToTicker(String clientId, String ticker) {
+        tickerToClientMap.computeIfAbsent(ticker,
+                key -> {
+                    registerTicker(ticker);
+                    return Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+                }
+        ).add(clientId);
     }
 
     private double randomDelta() {
