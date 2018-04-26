@@ -9,9 +9,11 @@ import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.stream.Stream;
 
 @SpringBootApplication
 @Slf4j
@@ -20,12 +22,12 @@ public class DemoSocketClient {
     ApplicationRunner appRunner() {
         return args ->
                 Flux.merge(
-                        Flux.just(1, 2, 3)
+                        Flux.fromStream(Stream.iterate(0, i -> i + 1)
+                                .limit(1)   // number of connections to make
+                        ).subscribeOn(Schedulers.single())
                                 .map(t -> wsConnect())
-                                .doOnNext(Mono::subscribe)
                                 .parallel()
                 )
-                        .doOnComplete(() -> log.info("Process complete."))
                         .blockLast();  // Don't go to sleep with this on :()
 
     }
@@ -45,7 +47,9 @@ public class DemoSocketClient {
                         .doOnNext(msg -> log.info(".in: " + msg))
                         .take(10)
                         .then()
-                ).doOnSuccess(sig -> log.info("connection complete!"));
+                )
+                .doOnSubscribe(sub -> log.info("new client connection"))
+                .doOnSuccess(n -> log.info("connection complete!"));
     }
 
     public static void main(String[] args) throws Exception {

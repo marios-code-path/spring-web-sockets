@@ -33,15 +33,47 @@ Spring WebFlux is a complete reimplementation of the MVC stack to adhere to reac
 You'll want to start a new Spring project using start.spring.io[this link] to autogenerate a maven based POM.  If you go with a different approach, just make sure to 
 have `webflux`, and `lombok` projects.
 
-When we want to start a websocket connection, the service will suffice to start our journey.  We will use the `org.springframework.web.reactive.socket.server.WebSocketService` interface implementation in `WebSocketHandlerAdapter` to handle our web socket handshake, upgrade, connection details.
-We want to use the netty reactor project for our event plumbing so we will wire in specific components to take car of this:
+We will use the `WebSocketHandlerAdapter` to handle our web socket handshake, upgrade, and other connection details.
 
-.netty_websocket_configuration
+.socket_handler_adapter
 [source,java]
 ----
-
+    @Bean
+    WebSocketHandlerAdapter socketHandlerAdapter() {
+        return new WebSocketHandlerAdapter();
+    }
 ----
 
+To get started, we will need a method for handling a websocket session. The simplest way to do this is to create a `WebSocketHandler` instance 
+that calls `session.send` with our custom stream logic. For this handler, on each session we will stream 100 integers and append bang '!' for primes.
+Using `Flux.interval` and `zipWith` in combination allows us to ensure a steady frequency of events.
+
+
+.socket_session_handler
+[source,java]
+----
+    WebSocketHandler webSocketHandler() {
+        return session ->
+                session.send(
+                        Flux.interval(Duration.ofSeconds(1))
+                                .zipWith(
+                                        Flux.fromStream(Stream.iterate(0, i -> i + 1).limit(100))
+                                        , (x, y) -> y + (is_prime(y) ? "!" : ""))
+                                .map(session::textMessage))
+                        .and(session.receive()
+                                .map(WebSocketMessage::getPayloadAsText)
+                                .doFinally(sig -> {
+                                    log.info("session complete:" + sig.toString());
+                                    session.close();
+                                }));
+    }
+----
+
+Using `and` operator lets us join this session with a `session.receive()` flow which reacts to incoming messages. In this case, we dont have any need
+
+
+
+To route our URI's to a handler, we must 
 == References/Readling List
 
 * Spring WebFlux guide
