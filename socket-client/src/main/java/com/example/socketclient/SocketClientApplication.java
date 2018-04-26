@@ -25,7 +25,7 @@ public class SocketClientApplication {
             final String[] clientIds = new String[]{"CLIENT1", "CLIENT2", ""};
             Flux.just(clientIds)
                     .map(s -> this.subscribeTo(s, "SQRT")
-                            .flatMap(rx ->{ log.info("STATUS: " +rx.statusCode()); return rx.bodyToMono(Void.class);})
+                            .flatMap(rx ->rx.bodyToMono(Void.class))
                     )
                     .doOnNext(Mono::subscribe)
                     .mergeWith(

@@ -66,6 +66,7 @@ public class StockService {
     }
 
     void subscribeToTicker(String clientId, String ticker) {
+        // simple way to ask for, possibly initialize, and add an element IMHO.
         tickerToClientMap.computeIfAbsent(ticker,
                 key -> {
                     registerTicker(ticker);
