@@ -1,4 +1,4 @@
-= Streaming events to your clients via Spring WebSockets
+= Create WebSocket Servers with Spring WebSocketServer
 Mario Gray <mgray@pivotal.io>
 :Author Initials: MVG
 :toc:
@@ -9,12 +9,12 @@ Mario Gray <mgray@pivotal.io>
 :note: Drain the [BAYEUX]
 
 == This Demo
-This demo will stand up Spring application service that exposes reactive WebSocket service and client through the Spring WebFlux API.
+This demo will stand up Spring application service that exposes a reactive WebSocket service through the Spring 5's WebSockets API.
 Typically, we will use a more traditional messaging system to deliver and expect events between services. Using messaging brokers such as Kafka, RabbitMq, AWS/SQS, Kinesis all enable our services to deliver real-time/mixed-time events to internal services that require them. Its not good enough to introduce the broker model to our application deployed to the public - because the underlaying transport or even service may change under the app's (feet). Thus WebSockets give us a standards and performant approach to delivering realtime events to our apps.
 
-[A sample graph of services and then of a mix of clients that connect]
+A sample graph of services and then of a mix of clients that connect
 
-== Whats in a socket?
+== Little History?
 Lets look at the prior and current methods to delivering events that span about the past 10 years (not including comet-d).
 
 .Short Polling
@@ -28,8 +28,8 @@ The downside to long-polling is that the client may end up making many requests 
 Finally, the https://tools.ietf.org/html/rfc6455[WebSocket protocol] eliminates the need for polling. The websocket is really just a standard bi-directional TCP connection, that began life as a HTTP request. The details of this connection negotiation are outlined in the [RFC] as well.
 WebSockets really shine when you have many application events that need to be delivered in high-frequency, as soon as possible. Real-time applications like stock tickers(this demo), chat apps, and even audio/video apps - WebSockets handles binary content too!
 
-== Enter the WebFlux
-Spring WebFlux is a reacrtive adaptation of the MVC stack. We will introduce a single WebSocket handler, and show whats needed to get started using Spring's `WebSocketServer` support.
+== WebSocket Server
+Spring's WebSocket API is new in Spring 5, and enables reactive event and connection handling. We will introduce a single WebSocket handler, and show whats needed to get started using Spring's `WebSocketServer` support.
 You'll want to start a new Spring project using start.spring.io[this link] to autogenerate a maven based POM.  If you go with a different approach, just make sure to 
 have `webflux`, and `lombok` projects.
 
@@ -82,14 +82,14 @@ Using `Flux.interval` and `zipWith` in combination allows us to ensure a steady 
     }    
 ----
 
-Using `and` operator lets us join this session with `session.receive()` flow that reacts to incoming messages. In this case, we dont have any need for it, but it's good to illustrate this side of functionality for the curious.
+Using `and` operator lets us join this session with a `receive()` flow that reacts to incoming messages. In this case, we dont have any need for it, but it's good to illustrate this side of functionality for the curious.
 Our session makes use of the `doOn...` signal handlers used to respond to connection lifecycle events. Always make sure to call `session.close()` or else you end up with leaks.
 
 Finally, to map URI's to our handler we wire in a reactive `SimpleUrlHandlerMapping` to delegate socket connections on URL `/ws/feed`.
 
 .uri_handler_mapping
 [source,java]
----
+----
     @Bean
     HandlerMapping simpleUrlHandlerMapping() {
         SimpleUrlHandlerMapping simpleUrlHandlerMapping = new SimpleUrlHandlerMapping();
@@ -99,7 +99,7 @@ Finally, to map URI's to our handler we wire in a reactive `SimpleUrlHandlerMapp
         simpleUrlHandlerMapping.setOrder(10);
         return simpleUrlHandlerMapping;
     }
----
+----
 
 Finally, we will execute this server app:
 
@@ -111,7 +111,7 @@ Finally, we will execute this server app:
     }
 ----
 
-Run the application:
+Start the application:
 
 [source,bash]
 ----
