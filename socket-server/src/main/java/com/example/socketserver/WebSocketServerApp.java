@@ -1,10 +1,14 @@
 package com.example.socketserver;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.HandlerMapping;
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
+import org.springframework.web.reactive.result.method.annotation.RequestMappingHandlerMapping;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter;
@@ -12,12 +16,11 @@ import reactor.core.publisher.Flux;
 
 import java.time.Duration;
 import java.util.Collections;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-@Configuration
+@Component
 @Slf4j
-public class WebSocketConfiguration {
+public class WebSocketServerApp {
     @Bean
     WebSocketHandlerAdapter socketHandlerAdapter() {
         return new WebSocketHandlerAdapter();
@@ -51,7 +54,7 @@ public class WebSocketConfiguration {
         return simpleUrlHandlerMapping;
     }
 
-    // XODE! stackoverflow
+    // brute-force search :p
     boolean is_prime(long num) {
         if (num <= 1) return false;
         if (num % 2 == 0 && num > 2) return false;
@@ -60,5 +63,9 @@ public class WebSocketConfiguration {
                 return false;
         }
         return true;
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(WebSocketServerApp.class, args);
     }
 }

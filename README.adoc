@@ -8,9 +8,9 @@ Mario Gray <mgray@pivotal.io>
 :website: https://docs.spring.io/spring/docs/5.0.0.BUILD-SNAPSHOT/spring-framework-reference/html/web-reactive.html
 :note: Drain the [BAYEUX]
 
-== Purpose
-This article we will talk about standing up a Spring application service that exposes reactive WebSocket service and client through the Spring WebFlux API.
-Typically, we will use a more traditional messaging system to deliver and expect events between services. Using messaging brokers such as Kafka, RabbitMq, AWS/SQS, Kinesis all enable our services to deliver real-time/mixed-time events to internal services that require them. Its not good enough to introduce the broker model to our application deployed on field - because the underlaying transport or even service may change under the app's (feet). Thus WebSockets give us a standards and performant approach to delivering events to our apps.
+== This Demo
+This demo will stand up Spring application service that exposes reactive WebSocket service and client through the Spring WebFlux API.
+Typically, we will use a more traditional messaging system to deliver and expect events between services. Using messaging brokers such as Kafka, RabbitMq, AWS/SQS, Kinesis all enable our services to deliver real-time/mixed-time events to internal services that require them. Its not good enough to introduce the broker model to our application deployed to the public - because the underlaying transport or even service may change under the app's (feet). Thus WebSockets give us a standards and performant approach to delivering realtime events to our apps.
 
 [A sample graph of services and then of a mix of clients that connect]
 
@@ -29,11 +29,11 @@ Finally, the https://tools.ietf.org/html/rfc6455[WebSocket protocol] eliminates 
 WebSockets really shine when you have many application events that need to be delivered in high-frequency, as soon as possible. Real-time applications like stock tickers(this demo), chat apps, and even audio/video apps - WebSockets handles binary content too!
 
 == Enter the WebFlux
-Spring WebFlux is a complete reimplementation of the MVC stack to adhere to reactive components. We will use the reactive approach for this applicaiton in exposing REST endpoints, and our WS service as well.
+Spring WebFlux is a reacrtive adaptation of the MVC stack. We will introduce a single WebSocket handler, and show whats needed to get started using Spring's `WebSocketServer` support.
 You'll want to start a new Spring project using start.spring.io[this link] to autogenerate a maven based POM.  If you go with a different approach, just make sure to 
 have `webflux`, and `lombok` projects.
 
-We will use the `WebSocketHandlerAdapter` to handle our web socket handshake, upgrade, and other connection details.
+First, wire in a `WebSocketHandlerAdapter` to handle our web socket handshake, upgrade, and other connection details.
 
 .socket_handler_adapter
 [source,java]
@@ -70,14 +70,58 @@ Using `Flux.interval` and `zipWith` in combination allows us to ensure a steady 
                                 })
                 );
     }
+// bruteforced search :p
+    boolean is_prime(long num) {
+        if (num <= 1) return false;
+        if (num % 2 == 0 && num > 2) return false;
+        for (int i = 3; i < num / 2; i += 2) {
+            if (num % i == 0)
+                return false;
+        }
+        return true;
+    }    
 ----
 
-Using `and` operator lets us join this session with a `session.receive()` flow which reacts to incoming messages. In this case, we dont have any need it, but it's good to illustrate this side of functionality for the curious.
+Using `and` operator lets us join this session with `session.receive()` flow that reacts to incoming messages. In this case, we dont have any need for it, but it's good to illustrate this side of functionality for the curious.
+Our session makes use of the `doOn...` signal handlers used to respond to connection lifecycle events. Always make sure to call `session.close()` or else you end up with leaks.
 
+Finally, to map URI's to our handler we wire in a reactive `SimpleUrlHandlerMapping` to delegate socket connections on URL `/ws/feed`.
 
+.uri_handler_mapping
+[source,java]
+---
+    @Bean
+    HandlerMapping simpleUrlHandlerMapping() {
+        SimpleUrlHandlerMapping simpleUrlHandlerMapping = new SimpleUrlHandlerMapping();
+        RequestMappingHandlerMapping foo = new RequestMappingHandlerMapping();
+        simpleUrlHandlerMapping.setUrlMap(Collections.singletonMap("/ws/feed",
+                webSocketHandler()));
+        simpleUrlHandlerMapping.setOrder(10);
+        return simpleUrlHandlerMapping;
+    }
+---
 
+Finally, we will execute this server app:
 
-To route our URI's to a handler, we must 
+.server_app_main
+[source,java]
+----
+    public static void main(String[] args) {
+        SpringApplication.run(WebSocketConfiguration.class, args);
+    }
+----
+
+Run the application:
+
+[source,bash]
+----
+$ mvn clean spring-boot:run
+...
+2018-04-26 15:36:54.330  INFO 10671 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 8080
+----
+
+Now we are ready to implement the client, and demonstrate the new server we just stood up!
+
 == References/Readling List
 
 * Spring WebFlux guide
