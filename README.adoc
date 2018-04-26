@@ -59,17 +59,21 @@ Using `Flux.interval` and `zipWith` in combination allows us to ensure a steady 
                                 .zipWith(
                                         Flux.fromStream(Stream.iterate(0, i -> i + 1).limit(100))
                                         , (x, y) -> y + (is_prime(y) ? "!" : ""))
-                                .map(session::textMessage))
-                        .and(session.receive()
+                                .map(session::textMessage)
+                ).and(
+                        session.receive()
                                 .map(WebSocketMessage::getPayloadAsText)
+                                .doOnSubscribe(sub -> log.info("socket session started"))
                                 .doFinally(sig -> {
                                     log.info("session complete:" + sig.toString());
                                     session.close();
-                                }));
+                                })
+                );
     }
 ----
 
-Using `and` operator lets us join this session with a `session.receive()` flow which reacts to incoming messages. In this case, we dont have any need
+Using `and` operator lets us join this session with a `session.receive()` flow which reacts to incoming messages. In this case, we dont have any need it, but it's good to illustrate this side of functionality for the curious.
+
 
 
 
