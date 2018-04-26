@@ -1,7 +1,6 @@
 package com.example.socketserver;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
@@ -11,9 +10,7 @@ import java.time.Duration;
 @Slf4j
 public class TickGenerator {
 
-    @Bean
     Flux<String> get() {
-        log.info("NEW SEQUENCE");
         return Flux
                 .interval(Duration.ofSeconds(1))
                 .zipWith(
