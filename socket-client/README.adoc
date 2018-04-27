@@ -1,4 +1,4 @@
-= Consuming WebSockets with Spring 5 reactive
+= Consuming WebSockets with Spring 5's reactive client
 Mario Gray <mgray@pivotal.io>
 :Author Initials: MVG
 :toc:
@@ -9,11 +9,14 @@ Mario Gray <mgray@pivotal.io>
 :note: Drain the [BAYEUX]
 
 == This Demo
-This client simply connects and receives events from any URL. We have an https://github.com/marios-code-path/spring-web-sockets/tree/master/socket-server[existing server] to stand up that can supply the socket events.
-A reactive client means that we can respond to backpressure, so we will demonstrate the flow control through this method.
+This demo client will connect and receive events from any URL that emits an open websocket stream. We have an https://github.com/marios-code-path/spring-web-sockets/tree/master/socket-server[existing server] to stand up that can supply the socket events.
+A reactive client means that we can respond to backpressure, and weild the `Observer` pattern to our client connections.
 
 == The Client (SANS web)
-To get started, lets create the client.  Any http://start.spring.io[start dot spring dot io] generated application, or just include these dependencies to your project:
+We can use our favorite Spring Application Initializr http://start.spring.io[start dot spring dot io] to generate the application.
+To get started, any project must have the following dependencies:
+
+
 
 .dependencies_for_webflux
 [source,xml]
@@ -30,10 +33,9 @@ To get started, lets create the client.  Any http://start.spring.io[start dot sp
 ----
 
 For this client, we will use `ReactorNettyWebSocketClient` that will handle all of the work for connecting and handling events.
-The `execute(...)` method is overloaded, and supports custom headers as well. Each emits a WebSocketSession instance Be aware though, browsers do not support custom headers in WS* connections.
+The `execute(...)` method is overloaded, and supports custom headers as well. Each emits a WebSocketSession instance. Be aware though, browsers do not support custom headers in WS* connections.
 
-We'll then latch on to the session's `receive()` stream and produce output to the console. Next, we are interested on knowning when a client has attached, and when it completes. These lifecycle events on the connection are 
-handled with session  `do...` handler methods.
+A `WebSocketHandler` is configured to process the client session. We'll latch on to the session's `receive()` stream and produce output to the console. The doOn(...) handlers tell us about the session lifecycle events.
 
 .websocket_client
 [source,java]
@@ -42,20 +44,21 @@ handled with session  `do...` handler methods.
         URI uri = getURI("ws://localhost:8080/ws/feed");
 
         return new ReactorNettyWebSocketClient()
-                .execute(uri, session -> session
+                        .execute(uri, session -> session
                         .receive()
                         .map(msg -> id + ".in: " + msg.getPayloadAsText())
                         .doOnNext(log::info)
-                        .take(10)
-                        .then()
+                        .take(5)
+                        .doOnSubscribe(sub -> log.info("new client connection"))
+                        .doOnComplete(() -> log.info("connection complete!"))
+                        .then() // drop events from here.
                 )
-                .doOnSubscribe(sub -> log.info("new client connection"))
-                .doOnSuccess(n -> log.info("connection complete!"));
     }
 ----
 
-Now we can setup the subscription method. Since our client execution returnd a type of `Mono<Void>`, we can simply compose a reactive stream to emit
-events in any fashion.
+Now we can setup the subscription method. Since our client execution returnd a type of `Mono<Void>`, we will compose a stream to emit many client instances that will survive on a single threaded event loop.  
+Our Flux will subscribe and block until each client has sent it's completion event.
+We have used blocking code for this demonstration, but its just not a good thing to see in production.  Use wisely.
 
 .a_reactive_ws_stream
 [source,java]
@@ -73,6 +76,56 @@ events in any fashion.
                         .blockLast();  // Don't go to sleep with this on :()
     }
 ----
+
+Finally, to make this application runnable, there is a fancy `@SpringBootApplication` code :)
+
+.ws_client_main
+[source,java]
+----
+@SpringBootApplication
+@Slf4j
+public class SocketClientApp {
+    // rest of the code goes here
+
+    public static void main(String[] args) throws Exception {
+        SpringApplication app = new SpringApplication(SocketClientApp.class);
+                app.setWebApplicationType(WebApplicationType.NONE);
+                app.run(args);
+    }
+}
+----
+
+The `spring.main.web-environment` property variable has been deprecated in Spring 5.0.  The recommended method is now to programatically setup `WebApplicationType` at initialization.
+I like it, as it removes the need to have `application.properties` for one property (and keeps configuration condensed) :)
+
+.execute
+[source,shell]
+----
+$ mvn spring-boot:run
+----
+
+The output to this should be a stream of digits with '!' attached for prime numbers.  Because using `take(n)`, we should only see `n` events per client.
+
+.output
+[source,shell]
+----
+2018-04-26 20:01:31.376  INFO 19397 --- [           main] c.example.socketclient.SocketClientApp   : Started SocketClientApp in 1.9 seconds (JVM running for 2.534)
+2018-04-26 20:01:31.543  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : new client connection
+2018-04-26 20:01:32.528  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.in: 0
+2018-04-26 20:01:33.527  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.in: 1
+2018-04-26 20:01:34.524  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.in: 2!
+2018-04-26 20:01:35.526  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.in: 3!
+2018-04-26 20:01:36.526  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.in: 4
+2018-04-26 20:01:36.533  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : connection complete!
+----
+
+== Notes
+
+Hope you find this demonstration useful. Send your feedback to me via email twitter, or Carrier Pigeon.
+
+* mgray@pivotal.io
+* @mariogray
+* https://tools.ietf.org/html/rfc1149[gps_coordinates_for_carrier_pigeon]
 
 
 == References/Readling List

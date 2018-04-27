@@ -27,33 +27,32 @@ public class SocketClientApp {
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }
-        log.error("Failed to create a URI for client connect");
+
         return null;
     }
 
-    ;
-
     @Bean
     WebSocketClient wsClient() {
-        log.info("New Client ");
         return new ReactorNettyWebSocketClient();
     }
 
     WebSocketHandler clientHandler(int id) {
-        return session ->session
+        return session -> session
                 .receive()
                 .map(msg -> id + ".in: " + msg.getPayloadAsText())
                 .doOnNext(log::info)
-                .then();
+                .take(5)
+                .doOnSubscribe(sub -> log.info("new client connection"))
+                .doOnComplete(() -> log.info("connection complete!"))
+                .doOnCancel(() -> log.info("canceled"))
+                .then() // drop events from here.
+                ;
     }
 
     Mono<Void> wsConnectNetty(int id) {
         URI uri = getURI("ws://localhost:8080/ws/feed");
 
-        return wsClient().execute(uri, clientHandler(id))
-                .doOnSubscribe(sub -> log.info("new client connection"))
-                .doOnSuccess(n -> log.info("connection complete!"));
-
+        return wsClient().execute(uri, clientHandler(id));
     }
 
     @Bean
@@ -61,7 +60,7 @@ public class SocketClientApp {
         return args ->
                 Flux.merge(
                         Flux.fromStream(Stream.iterate(0, i -> i + 1)
-                                .limit(3)   // number of connections to make
+                                .limit(1)   // number of connections to make
                         ).subscribeOn(Schedulers.single())
                                 .map(this::wsConnectNetty)
                                 .parallel()
