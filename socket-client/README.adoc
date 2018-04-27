@@ -1,0 +1,94 @@
+= Consuming WebSockets with Spring 5 reactive
+Mario Gray <mgray@pivotal.io>
+:Author Initials: MVG
+:toc:
+:icons:
+:numbered:
+:imagesdir: ./graphics
+:website: https://docs.spring.io/spring/docs/5.0.0.BUILD-SNAPSHOT/spring-framework-reference/html/web-reactive.html
+:note: Drain the [BAYEUX]
+
+== This Demo
+This client simply connects and receives events from any URL. We have an https://github.com/marios-code-path/spring-web-sockets/tree/master/socket-server[existing server] to stand up that can supply the socket events.
+A reactive client means that we can respond to backpressure, so we will demonstrate the flow control through this method.
+
+== The Client (SANS web)
+To get started, lets create the client.  Any http://start.spring.io[start dot spring dot io] generated application, or just include these dependencies to your project:
+
+.dependencies_for_webflux
+[source,xml]
+----
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+----
+
+For this client, we will use `ReactorNettyWebSocketClient` that will handle all of the work for connecting and handling events.
+The `execute(...)` method is overloaded, and supports custom headers as well. Each emits a WebSocketSession instance Be aware though, browsers do not support custom headers in WS* connections.
+
+We'll then latch on to the session's `receive()` stream and produce output to the console. Next, we are interested on knowning when a client has attached, and when it completes. These lifecycle events on the connection are 
+handled with session  `do...` handler methods.
+
+.websocket_client
+[source,java]
+----
+    Mono<Void> wsConnectNetty(int id) {
+        URI uri = getURI("ws://localhost:8080/ws/feed");
+
+        return new ReactorNettyWebSocketClient()
+                .execute(uri, session -> session
+                        .receive()
+                        .map(msg -> id + ".in: " + msg.getPayloadAsText())
+                        .doOnNext(log::info)
+                        .take(10)
+                        .then()
+                )
+                .doOnSubscribe(sub -> log.info("new client connection"))
+                .doOnSuccess(n -> log.info("connection complete!"));
+    }
+----
+
+Now we can setup the subscription method. Since our client execution returnd a type of `Mono<Void>`, we can simply compose a reactive stream to emit
+events in any fashion.
+
+.a_reactive_ws_stream
+[source,java]
+----
+    @Bean
+    ApplicationRunner appRunner() {
+        return args ->
+                Flux.merge(
+                        Flux.fromStream(Stream.iterate(0, i -> i + 1)
+                                .limit(3)   // number of connections to make
+                        ).subscribeOn(Schedulers.single())
+                                .map(this::wsConnectNetty)
+                                .parallel()
+                )
+                        .blockLast();  // Don't go to sleep with this on :()
+    }
+----
+
+
+== References/Readling List
+
+* Spring WebFlux guide
+** https://docs.spring.io/spring/docs/5.0.0.BUILD-SNAPSHOT/spring-framework-reference/html/web-reactive.html
+** https://docs.spring.io/spring/docs/current/spring-framework-reference/web-reactive.html
+
+* Articles
+** https://ordina-jworks.github.io/reactive/2016/12/12/Reactive-Programming-Spring-Reactor.html
+
+* W3C Proposals
+** https://tools.ietf.org/html/rfc6455
+
+* Theory
+** http://reactivex.io/documentation/operators.html
+** https://github.com/Reactive-Extensions/RxJS/blob/master/doc/api/core/operators/debounce.md
+
+

@@ -2,6 +2,7 @@ package com.example.socketserver;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.HandlerMapping;
@@ -15,7 +16,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.stream.Stream;
 
-@Component
+@SpringBootApplication
 @Slf4j
 public class WebSocketServerApp {
     @Bean
