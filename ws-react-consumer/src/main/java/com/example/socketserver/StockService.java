@@ -1,6 +1,8 @@
 package com.example.socketserver;
 
 import lombok.extern.slf4j.Slf4j;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -11,6 +13,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 @Service
 @Slf4j
@@ -20,48 +23,46 @@ public class StockService {
 
     void registerTicker(String ticker) {
         if (!stockSourceMap.containsKey(ticker)) {
-            Flux.generate(
-                    () -> 25.0,
-                    (state, sink) -> {
-                        sink.next(new Stock(ticker, state));
-                        if (state > 100.0) sink.complete();
-                        return state + randomDelta();
-                    })
+            Flux.fromStream(
+                    Stream
+                            .iterate(0.0, i -> i + randomDelta())
+                            .map(i -> new Stock(ticker, i))
+            )
                     .ofType(Stock.class)
                     .zipWith(Flux.interval(Duration.ofSeconds(2)), (stock, idx) -> stock)
-                    .doOnNext(stock ->
-                            {
-                                if (tickerToClientMap.containsKey(stock.getTicker())) {
-                                    tickerToClientMap.get(stock.getTicker())
-                                            .stream()
-                                            .filter(clientSinks::containsKey)
-                                            .forEach(clientId -> clientSinks.get(clientId).accept(stock));
-                                }
-                            }
-                    )
                     .doFinally(s -> {   // or onComplete
                         stockSourceMap.remove(ticker);
                         tickerToClientMap.remove(ticker);
                     })
-                    .subscribe();   // start ticking
+                    .subscribe(stock -> {
+                        if (tickerToClientMap.containsKey(stock.getTicker())) {
+                            tickerToClientMap.get(stock.getTicker())
+                                    .stream()
+                                    .filter(clientConsumers::containsKey)
+                                    .forEach(clientId -> clientConsumers.get(clientId).accept(stock));
+                        }
+                    });
+
         }
     }
 
-    private final Map<String, Consumer<Stock>> clientSinks = new ConcurrentHashMap<>();
+    private final Map<String, Consumer<Stock>> clientConsumers = new ConcurrentHashMap<>();
+    private final Map<String, Flux<Stock>> clientSinks = new ConcurrentHashMap<>();
 
     Flux<Stock> getOrCreateClientSink(String clientId) {
         if (!clientSinks.containsKey(clientId)) {
             return Flux.create(sink ->
-                    clientSinks.put(clientId, (s) -> sink.next(s))
-            );
+                    clientConsumers.put(clientId, s -> sink.next(s))
+            )
+                    .onBackpressureDrop()
+                    .ofType(Stock.class);
         }
-        // 2nd login for same client never sees stream. ~:/
-        return Flux.empty();
+        return clientSinks.get(clientId);
     }
 
     void removeClientSink(String clientId) {
-        if (clientSinks.containsKey(clientId)) {
-            clientSinks.remove(clientId);
+        if (clientConsumers.containsKey(clientId)) {
+            clientConsumers.remove(clientId);
         }
     }
 

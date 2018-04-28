@@ -1,0 +1,43 @@
+= Multiple Consumers in a Fan-Out Configuration
+Mario Gray <mgray@pivotal.io>
+:Author Initials: MVG
+:toc:
+:icons:
+:numbered:
+:imagesdir: ./graphics
+:website: https://docs.spring.io/spring/docs/5.0.0.BUILD-SNAPSHOT/spring-framework-reference/html/web-reactive.html
+:note: Drain the [BAYEUX]
+
+== This Demo
+This demo will stand up Spring application service that exposes a reactive WebSocket service through the Spring 5's WebSockets API.
+It will demonstrate multicasting flux to web sockets.  We will keep this simple, and direct.  Most of the work that I am trying to convey deals with Reactive concepts.
+
+== Problem documentation
+domain 
+
+== WebSocket Server
+the server 
+
+== The Client
+yes, a client!
+
+= Afterwords
+Next stop, Security!
+
+== References/Readling List
+
+* Spring WebFlux guide
+** https://docs.spring.io/spring/docs/5.0.0.BUILD-SNAPSHOT/spring-framework-reference/html/web-reactive.html
+** https://docs.spring.io/spring/docs/current/spring-framework-reference/web-reactive.html
+
+* Articles
+** https://ordina-jworks.github.io/reactive/2016/12/12/Reactive-Programming-Spring-Reactor.html
+
+* W3C Proposals
+** https://tools.ietf.org/html/rfc6455
+
+* Theory
+** http://reactivex.io/documentation/operators.html
+** https://github.com/Reactive-Extensions/RxJS/blob/master/doc/api/core/operators/debounce.md
+
+

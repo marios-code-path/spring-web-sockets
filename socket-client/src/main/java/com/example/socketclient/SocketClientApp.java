@@ -6,6 +6,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
 import org.springframework.web.reactive.socket.client.WebSocketClient;
@@ -15,6 +16,8 @@ import reactor.core.scheduler.Schedulers;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 
 @SpringBootApplication
@@ -49,10 +52,14 @@ public class SocketClientApp {
                 ;
     }
 
+    List<String> clients = Arrays.asList("A","B","C");
     Mono<Void> wsConnectNetty(int id) {
         URI uri = getURI("ws://localhost:8080/ws/feed");
 
-        return wsClient().execute(uri, clientHandler(id));
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("client-id", clients.get(id));
+
+        return wsClient().execute(uri, headers, clientHandler(id));
     }
 
     @Bean

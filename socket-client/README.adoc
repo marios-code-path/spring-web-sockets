@@ -1,4 +1,4 @@
-= Consuming WebSockets with Spring 5's reactive client
+= Consuming WebSockets With Spring 5's Reactive Client
 Mario Gray <mgray@pivotal.io>
 :Author Initials: MVG
 :toc:
@@ -96,7 +96,7 @@ public class SocketClientApp {
 ----
 
 The `spring.main.web-environment` property variable has been deprecated in Spring 5.0.  The recommended method is now to programatically setup `WebApplicationType` at initialization.
-I like it, as it removes the need to have `application.properties` for one property (and keeps configuration condensed) :)
+I removed the `application.properties` for one property (and kept configuration condensed) :)
 
 .execute
 [source,shell]
@@ -135,7 +135,8 @@ Hope you find this demonstration useful. Send your feedback to me via email twit
 ** https://docs.spring.io/spring/docs/current/spring-framework-reference/web-reactive.html
 
 * Articles
-** https://ordina-jworks.github.io/reactive/2016/12/12/Reactive-Programming-Spring-Reactor.html
+** Tom Van den Bulck has a niece https://ordina-jworks.github.io/reactive/2016/12/12/Reactive-Programming-Spring-Reactor.html[piece] on reactive programming with Spring.
+ 
 
 * W3C Proposals
 ** https://tools.ietf.org/html/rfc6455
