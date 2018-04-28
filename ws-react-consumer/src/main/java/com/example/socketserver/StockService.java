@@ -38,7 +38,7 @@ public class StockService {
                         if (tickerToClientMap.containsKey(stock.getTicker())) {
                             tickerToClientMap.get(stock.getTicker())
                                     .stream()
-                                    .filter(clientConsumers::containsKey)
+                                    .filter(clientConsumers::containsKey)  // ensure we dont forward when client has not connected to ws://
                                     .forEach(clientId -> clientConsumers.get(clientId).accept(stock));
                         }
                     });
@@ -52,7 +52,7 @@ public class StockService {
     Flux<Stock> getOrCreateClientSink(String clientId) {
         if (!clientSinks.containsKey(clientId)) {
             return Flux.create(sink ->
-                    clientConsumers.put(clientId, s -> sink.next(s))
+                    clientConsumers.put(clientId, sink::next)
             )
                     .onBackpressureDrop()
                     .ofType(Stock.class);
