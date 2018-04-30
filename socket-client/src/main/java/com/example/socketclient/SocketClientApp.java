@@ -6,7 +6,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import org.springframework.http.HttpHeaders;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
 import org.springframework.web.reactive.socket.client.WebSocketClient;
@@ -18,12 +17,13 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 @SpringBootApplication
 @Slf4j
 public class SocketClientApp {
-
     URI getURI(String uri) {
         try {
             return new URI(uri);
@@ -52,27 +52,30 @@ public class SocketClientApp {
                 ;
     }
 
-    List<String> clients = Arrays.asList("A","B","C");
+    List<String> clients = Arrays.asList("A", "B", "C");
+
     Mono<Void> wsConnectNetty(int id) {
         URI uri = getURI("ws://localhost:8080/ws/feed");
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("client-id", clients.get(id));
-
-        return wsClient().execute(uri, headers, clientHandler(id));
+        return wsClient().execute(uri, clientHandler(id));
     }
 
     @Bean
     ApplicationRunner appRunner() {
-        return args ->
-                Flux.merge(
-                        Flux.fromStream(Stream.iterate(0, i -> i + 1)
-                                .limit(1)   // number of connections to make
-                        ).subscribeOn(Schedulers.single())
-                                .map(this::wsConnectNetty)
-                                .parallel()
-                )
-                        .blockLast();  // Don't go to sleep with this on :()
+        return args -> {
+            final CountDownLatch latch = new CountDownLatch(1);
+            Flux.merge(
+                    Flux.fromStream(Stream.iterate(0, i -> i + 1)
+                            .limit(1)   // number of connections to make
+                    ).subscribeOn(Schedulers.single())
+                            .map(this::wsConnectNetty)
+                            .flatMap(sp -> sp.doOnTerminate(latch::countDown))
+                            .parallel()
+            )
+                    .subscribe();
+
+            latch.await(20, TimeUnit.SECONDS);
+        };
     }
 
     public static void main(String[] args) throws Exception {

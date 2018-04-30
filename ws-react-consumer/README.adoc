@@ -17,7 +17,8 @@ Stock ticker will produce values containting it's ticker symbol, and a price.  P
 This way, we can have a 1:many (fan out) situation in which each ticker is it's own Supplier.
 
 == WebSocket Server
-the server 
+This server will attempt to react to each tick with a response to each subscriber.  Each client will consume a Flux<Stock>, in which subscription entities are pushed to. 
+For this to work with websockets, we will create the consumer for each client sink, such that {onEvent -> push to client stream}.
 
 == The Client
 yes, a client!
