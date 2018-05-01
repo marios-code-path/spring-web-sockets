@@ -6,17 +6,15 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import org.springframework.web.reactive.socket.WebSocketHandler;
-import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
-import org.springframework.web.reactive.socket.client.WebSocketClient;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
@@ -34,28 +32,13 @@ public class SocketClientApp {
         return null;
     }
 
-    @Bean
-    WebSocketClient wsClient() {
-        return new ReactorNettyWebSocketClient();
-    }
-
-    WebSocketHandler clientHandler(int id) {
-        return session -> session
-                .receive()
-                .map(msg -> id + ".in: " + msg.getPayloadAsText())
-                .doOnNext(log::info)
-                .take(5)
-                .doOnSubscribe(sub -> log.info("new client connection"))
-                .doOnComplete(() -> log.info("connection complete!"))
-                .doOnCancel(() -> log.info("canceled"))
-                .then() // drop events from here.
-                ;
-    }
-
-    Mono<Void> wsConnectNetty(int id) {
-        URI uri = getURI("ws://localhost:8080/sse/primes");
-
-        return wsClient().execute(uri, clientHandler(id));
+    Flux<ServerSentEvent> sseConnect() {
+        return WebClient.create("http://localhost:8080/sse/primes")
+                .method(HttpMethod.GET)
+                .accept(MediaType.APPLICATION_OCTET_STREAM)
+                .retrieve()
+                .bodyToFlux(ServerSentEvent.class)
+                .doOnNext(e -> log.info("EVENT: " + e.comment()));
     }
 
     @Bean
@@ -66,8 +49,8 @@ public class SocketClientApp {
                     Flux.fromStream(Stream.iterate(0, i -> i + 1)
                             .limit(1)   // number of connections to make
                     ).subscribeOn(Schedulers.single())
-                            .map(this::wsConnectNetty)
-                            .flatMap(sp -> sp.doOnTerminate(latch::countDown))
+                            .map(n -> sseConnect())
+                            //.flatMap(sp -> sp.doOnTerminate(latch::countDown))
                             .parallel()
             )
                     .subscribe();
