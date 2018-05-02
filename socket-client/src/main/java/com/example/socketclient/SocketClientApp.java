@@ -7,6 +7,7 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.reactive.socket.WebSocketHandler;
+import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
 import org.springframework.web.reactive.socket.client.WebSocketClient;
 import reactor.core.publisher.Flux;
@@ -15,15 +16,16 @@ import reactor.core.scheduler.Schedulers;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 @SpringBootApplication
 @Slf4j
 public class SocketClientApp {
+    private final int NUM_CLIENTS = 2;
+
     URI getURI(String uri) {
         try {
             return new URI(uri);
@@ -34,26 +36,34 @@ public class SocketClientApp {
         return null;
     }
 
+
     @Bean
     WebSocketClient wsClient() {
         return new ReactorNettyWebSocketClient();
     }
 
+    List<Flux<String>> publishers = new ArrayList(4);
+
     WebSocketHandler clientHandler(int id) {
-        return session -> session
-                .receive()
-                .map(msg -> id + ".in: " + msg.getPayloadAsText())
-                .doOnNext(log::info)
-                .take(5)
-                .doOnSubscribe(sub -> log.info("new client connection"))
-                .doOnComplete(() -> log.info("connection complete!"))
-                .doOnCancel(() -> log.info("canceled"))
-                .then() // drop events from here.
-                ;
+        return session -> {
+
+            return session
+                    .receive()
+                    .map(WebSocketMessage::getPayloadAsText)
+                    .take(5)
+                    .doOnNext(txt -> log.info(id + ".in: " + txt))
+                    .filter(txt -> txt.endsWith("!"))
+                    .map(txt -> txt.split("!")[0])
+                    .flatMap(txt -> session.send(Mono.just(session.textMessage(txt))))
+                    .doOnSubscribe(sub -> log.info("new client connection"))
+                    .doOnComplete(() -> log.info("connection complete!"))
+                    .doOnCancel(() -> log.info("canceled"))
+                    .then();
+        };
     }
 
     Mono<Void> wsConnectNetty(int id) {
-        URI uri = getURI("ws://localhost:8080/sse/primes");
+        URI uri = getURI("ws://localhost:8080/ws/feed");
 
         return wsClient().execute(uri, clientHandler(id));
     }
@@ -61,11 +71,10 @@ public class SocketClientApp {
     @Bean
     ApplicationRunner appRunner() {
         return args -> {
-            final CountDownLatch latch = new CountDownLatch(1);
+            final CountDownLatch latch = new CountDownLatch(NUM_CLIENTS);
             Flux.merge(
-                    Flux.fromStream(Stream.iterate(0, i -> i + 1)
-                            .limit(1)   // number of connections to make
-                    ).subscribeOn(Schedulers.single())
+                    Flux.range(0, NUM_CLIENTS)
+                            .subscribeOn(Schedulers.single())
                             .map(this::wsConnectNetty)
                             .flatMap(sp -> sp.doOnTerminate(latch::countDown))
                             .parallel()
