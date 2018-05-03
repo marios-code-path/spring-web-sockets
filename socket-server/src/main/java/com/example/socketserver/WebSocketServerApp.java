@@ -35,7 +35,7 @@ public class WebSocketServerApp {
         return session ->
                 session.send(
                         Flux.interval(Duration.ofSeconds(1))
-                                .map(y -> y + (is_prime(y) ? "!" : ""))
+                                .map(n -> n.toString())
                                 .map(session::textMessage)
                 ).and(session.receive()
                         .map(WebSocketMessage::getPayloadAsText)
@@ -55,17 +55,6 @@ public class WebSocketServerApp {
                 webSocketHandler()));
         simpleUrlHandlerMapping.setOrder(10);
         return simpleUrlHandlerMapping;
-    }
-
-    // brute-force search :p
-    boolean is_prime(long num) {
-        if (num <= 1) return false;
-        if (num % 2 == 0 && num > 2) return false;
-        for (int i = 3; i < num / 2; i += 2) {
-            if (num % i == 0)
-                return false;
-        }
-        return true;
     }
 
     public static void main(String[] args) {

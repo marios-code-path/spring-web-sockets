@@ -42,8 +42,6 @@ public class SocketClientApp {
         return new ReactorNettyWebSocketClient();
     }
 
-    List<Flux<String>> publishers = new ArrayList(4);
-
     WebSocketHandler clientHandler(int id) {
         return session -> {
 
@@ -52,8 +50,7 @@ public class SocketClientApp {
                     .map(WebSocketMessage::getPayloadAsText)
                     .take(5)
                     .doOnNext(txt -> log.info(id + ".in: " + txt))
-                    .filter(txt -> txt.endsWith("!"))
-                    .map(txt -> txt.split("!")[0])
+                    .filter(txt -> is_prime(Long.valueOf(txt)))
                     .flatMap(txt -> session.send(Mono.just(session.textMessage(txt))))
                     .doOnSubscribe(sub -> log.info("new client connection"))
                     .doOnComplete(() -> log.info("connection complete!"))
@@ -89,5 +86,16 @@ public class SocketClientApp {
         SpringApplication app = new SpringApplication(SocketClientApp.class);
         app.setWebApplicationType(WebApplicationType.NONE);
         app.run(args);
+    }
+
+    // brute-force search :p
+    boolean is_prime(long num) {
+        if (num <= 1) return false;
+        if (num % 2 == 0 && num > 2) return false;
+        for (int i = 3; i < num / 2; i += 2) {
+            if (num % i == 0)
+                return false;
+        }
+        return true;
     }
 }
