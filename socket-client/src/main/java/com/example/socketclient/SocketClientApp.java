@@ -1,6 +1,7 @@
 package com.example.socketclient;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
@@ -26,6 +27,9 @@ import java.util.concurrent.TimeUnit;
 public class SocketClientApp {
     private final int NUM_CLIENTS = 2;
 
+    @Value("${app.client.url:http://localhost:8080/ws/feed}")
+    private String uriString;
+
     URI getURI(String uri) {
         try {
             return new URI(uri);
@@ -36,16 +40,13 @@ public class SocketClientApp {
         return null;
     }
 
-
     @Bean
     WebSocketClient wsClient() {
         return new ReactorNettyWebSocketClient();
     }
 
     WebSocketHandler clientHandler(int id) {
-        return session -> {
-
-            return session
+        return session -> session
                     .receive()
                     .map(WebSocketMessage::getPayloadAsText)
                     .take(5)
@@ -56,12 +57,10 @@ public class SocketClientApp {
                     .doOnComplete(() -> log.info("connection complete!"))
                     .doOnCancel(() -> log.info("canceled"))
                     .then();
-        };
     }
 
     Mono<Void> wsConnectNetty(int id) {
-        URI uri = getURI("ws://localhost:8080/ws/feed");
-
+        URI uri = getURI(uriString);
         return wsClient().execute(uri, clientHandler(id));
     }
 

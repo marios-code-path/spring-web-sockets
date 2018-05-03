@@ -30,7 +30,6 @@ public class WebSocketServerApp {
         return new WebSocketHandlerAdapter();
     }
 
-
     WebSocketHandler webSocketHandler() {
         return session ->
                 session.send(
@@ -39,10 +38,9 @@ public class WebSocketServerApp {
                                 .map(session::textMessage)
                 ).and(session.receive()
                         .map(WebSocketMessage::getPayloadAsText)
-                        .doOnNext(msg -> log.info("received: " + msg))
+                        .doOnNext(msg -> log.info("prime: " + msg))
                         .doOnSubscribe(sub -> log.info("socket session started"))
                         .doFinally(sig -> {
-                            log.info("session complete:" + sig.toString());
                             session.close();
                         })
                 );
