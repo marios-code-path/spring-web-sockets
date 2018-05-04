@@ -40,7 +40,6 @@ public class SocketClientApp {
         return null;
     }
 
-    @Bean
     WebSocketClient wsClient() {
         return new ReactorNettyWebSocketClient();
     }

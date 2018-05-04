@@ -32,7 +32,7 @@ public class SSEPushServerApp {
 @Slf4j
 class SSEController {
 
-    @GetMapping(value = "/sse/primes",produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    @GetMapping(value = "/sse/primes",produces = MediaType.TEXT_EVENT_STREAM_VALUE   )
     public Flux<ServerSentEvent> sseFlux() {
         return Flux.interval(Duration.ofMillis(250)).map(n -> {
             log.info("EVENT: " + n);

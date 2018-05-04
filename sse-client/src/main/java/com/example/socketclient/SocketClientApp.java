@@ -32,13 +32,14 @@ public class SocketClientApp {
         return null;
     }
 
-    Flux<ServerSentEvent> sseConnect() {
-        return WebClient.create("http://localhost:8080/sse/primes")
-                .method(HttpMethod.GET)
-                .accept(MediaType.APPLICATION_OCTET_STREAM)
+    Flux<String> sseConnect() {
+        return WebClient.create("http://localhost:8080").get()
+                .uri("/sse/primes")
+                .accept(MediaType.TEXT_EVENT_STREAM)
                 .retrieve()
-                .bodyToFlux(ServerSentEvent.class)
-                .doOnNext(e -> log.info("EVENT: " + e.comment()));
+                .bodyToFlux(String.class)
+                .share()
+                .doOnNext(e -> log.info("EVENT: " + e));
     }
 
     @Bean
