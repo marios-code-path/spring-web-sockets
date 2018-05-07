@@ -9,28 +9,7 @@ Mario Gray <mgray@pivotal.io>
 :note: Drain the [BAYEUX]
 
 == This Demo
-This demo will stand up Spring application service that exposes a reactive WebSocket service through the Spring 5's WebSockets API.
-Typically, we will use a more traditional messaging system to deliver and expect events between services. Using messaging brokers such as Kafka, RabbitMq, AWS/SQS, Kinesis all enable our services to deliver real-time/mixed-time events to internal services that require them. Its not good enough to introduce the broker model to our application deployed to the public - because the underlaying transport or even service may change under the app's (feet). Thus WebSockets give us a standards and performant approach to delivering realtime events to our apps.
-
-A sample graph of services and then of a mix of clients that connect
-
-== Little History?
-A little background is worth the unerstanding as to why I am so into web socket tech these days (not including comet-d).
-
-
-Short Polling::
-Short-polling as it's called, the client repeats a request for new events in a stream, while the server vends a single or series of events that happened since the last request. This works when very little data is traveling in either direction, and where the interval can be kept sparse. For example, a news feed may update just once every half minute which is fine for consumers. However this will breakdown once new information must be delivered as soon as possible in which case the interval must be tightned, causing additional contention at the edge.
-
-Long Polling::
-This gets us into long-polling[https://tools.ietf.org/html/rfc6202], which has been the happy medium between near-real-time delivery and persistent sockets (ws). A long-polling client intiates a request that can be satisfied by either a timeout, connection status change, or the reception of new event(s). The reason for the timeout exists as an exercise for https://tools.ietf.org/html/rfc6202[this IETF recommendation] as most intermediate HTTP proxies police HTTP connections, causing timeouts sooner than expected. Therefore, the IETF recommends somewhere between 30 and 120 second timeout tolerances. 
-The downside to long-polling is that the client may end up making many requests (like traditional polling) as events begin accumulating on the server for the client to request.
-
-Web Socket::
-Finally, the https://tools.ietf.org/html/rfc6455[WebSocket protocol] eliminates the need for polling. The websocket is really just a standard bi-directional TCP connection, that began life as a HTTP request. The details of this connection negotiation are outlined in the [RFC] as well.
-WebSockets really shine when you have many application events that need to be delivered in high-frequency, as soon as possible. Real-time applications like stock tickers(this demo), chat apps, and even audio/video apps - WebSockets handles binary content too!
-
-Server Sent Events(SSE)::
-I know there should be a blurb about SSE. So I am putting this marker here.  For now we will just understand that SSE means persistent ( as in Web Socket )  unidirectional HTTP session.
+This is the multi-casting Flux variation of the standard WebSocket Service seen https://github.com/marios-code-path/spring-web-sockets/tree/master/websocket-server[here]
 
 == WebSocket Server
 Spring's WebSocket API is new in Spring 5, and enables reactive event and connection handling. We will introduce a single WebSocket handler, and show whats needed to get started using Spring's `WebSocketServer` support.
