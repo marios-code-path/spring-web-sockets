@@ -38,11 +38,9 @@ public class WebSocketServerApp {
                                 .map(session::textMessage)
                 ).and(session.receive()
                         .map(WebSocketMessage::getPayloadAsText)
-                        .doOnNext(msg -> log.info("prime: " + msg))
-                        .doOnSubscribe(sub -> log.info("socket session started"))
-                        .doFinally(sig -> {
-                            session.close();
-                        })
+                        .doOnNext(msg -> log.info("Prime#: " + msg))
+                        .doOnSubscribe(sub -> log.info("Started." + session.getId()))
+                        .doFinally(sig -> log.info("Complete." + session.getId()))
                 );
     }
 
