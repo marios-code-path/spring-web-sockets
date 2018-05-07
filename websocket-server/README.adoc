@@ -11,9 +11,9 @@ Mario Gray <mgray@pivotal.io>
 == This Demo
 This demo will stand up Spring application service that exposes a WebSocket service through the Spring 5's reactive https://docs.spring.io/spring/docs/current/spring-framework-reference/web-reactive.html#spring-webflux[WebSockets] API.
 Typically, for inter-service comms, use a more traditional messaging system to deliver and expect events between services for example - messaging brokers such as https://kafka.apache.org/[Kafka], https://www.rabbitmq.com/[RabbitMq], etc.. 
-WebSockets is for edge consumption where data is being requested outside of your Service boundaries. That means WebSockets is a (not published yet) standard (W3C, IETF) way to issue streams to consumers (i.e. mobile devies).
+WebSockets is an https://tools.ietf.org/html/rfc6455[IETF] standard and https://www.w3.org/TR/websockets/[W3C] API that provides a convenient way to issue and consume data streams across the Internet. WebSockets is mainly used at edge consumption where data is being requested outside of your Service boundaries.
 
-A sample graph of services and then of a mix of clients that connect
+#A sample graph of services and then of a mix of clients that connect
 
 == WebSocket Server
 Spring's WebSocket API is new in Spring 5, and enables reactive event and connection handling. We will introduce a single WebSocket handler, and show whats needed to get started using Spring's `WebSocketServer` support.
@@ -31,7 +31,7 @@ To get started, wire in a https://docs.spring.io/spring/docs/4.0.0.M1_to_4.2.0.M
     }
 ----
 
-Next, create the websock session handler. The simplest way to do this to use the functional interface for `WebSocketHandler` and implement it's handle method to manage our stream response. In this, we will use the `Flux.interval` operator and push it's output back to the session.
+Next, create the websocket session handler. The simplest way to do this to use the functional interface for `WebSocketHandler` and implement it's handle method to manage our stream response. In this, we will use the `Flux.interval` operator and push it's output back to the session.
 The simplest way is to https://projectreactor.io/docs/core/release/api/reactor/core/publisher/Flux.html#map-java.util.function.Function-[`Flux.map` or transform] 
 the integer output into a string then compose a message using https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/socket/WebSocketSession.html#textMessage-java.lang.String-[`session.textMessage(String)`] or one of it's similar methods For this response.
 
