@@ -10,15 +10,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
-import org.springframework.web.reactive.socket.client.WebSocketClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -26,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class SocketClientApp {
     private final int NUM_CLIENTS = 2;
+    private final int MAX_EVENTS = 5;
 
     @Value("${app.client.url:http://localhost:8080/ws/feed}")
     private String uriString;
@@ -40,27 +38,31 @@ public class SocketClientApp {
         return null;
     }
 
-    WebSocketClient wsClient() {
-        return new ReactorNettyWebSocketClient();
-    }
-
-    WebSocketHandler clientHandler(int id) {
-        return session -> session
-                    .receive()
-                    .map(WebSocketMessage::getPayloadAsText)
-                    .take(5)
-                    .doOnNext(txt -> log.info(id + ".in: " + txt))
-                    .filter(txt -> is_prime(Long.valueOf(txt)))
-                    .flatMap(txt -> session.send(Mono.just(session.textMessage(txt))))
-                    .doOnSubscribe(sub -> log.info("new client connection"))
-                    .doOnComplete(() -> log.info("connection complete!"))
-                    .doOnCancel(() -> log.info("canceled"))
-                    .then();
-    }
-
     Mono<Void> wsConnectNetty(int id) {
         URI uri = getURI(uriString);
-        return wsClient().execute(uri, clientHandler(id));
+        return new ReactorNettyWebSocketClient().execute(uri,
+                session -> session
+                        .receive()
+                        .map(WebSocketMessage::getPayloadAsText)
+                        .take(MAX_EVENTS)
+                        .doOnNext(txt -> log.info(id + ".IN: " + txt))
+                        .filter(txt -> is_prime(Long.valueOf(txt)))
+                        .flatMap(txt -> session.send(Mono.just(session.textMessage(txt))))
+                        .doOnSubscribe(subscriber -> log.info(id + ".OPEN"))
+                        .doFinally(signalType -> log.info(id + ".CLOSE"))
+                        .then()
+        );
+    }
+
+    // brute-force search :p
+    boolean is_prime(long num) {
+        if (num <= 1) return false;
+        if (num % 2 == 0 && num > 2) return false;
+        for (int i = 3; i < num / 2; i += 2) {
+            if (num % i == 0)
+                return false;
+        }
+        return true;
     }
 
     @Bean
@@ -84,16 +86,5 @@ public class SocketClientApp {
         SpringApplication app = new SpringApplication(SocketClientApp.class);
         app.setWebApplicationType(WebApplicationType.NONE);
         app.run(args);
-    }
-
-    // brute-force search :p
-    boolean is_prime(long num) {
-        if (num <= 1) return false;
-        if (num % 2 == 0 && num > 2) return false;
-        for (int i = 3; i < num / 2; i += 2) {
-            if (num % i == 0)
-                return false;
-        }
-        return true;
     }
 }

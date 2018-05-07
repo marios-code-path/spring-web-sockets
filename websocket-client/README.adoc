@@ -32,48 +32,52 @@ To get started, any project must have the following dependencies:
         </dependency>
 ----
 
-For this client, we will use `ReactorNettyWebSocketClient` that will handle all of the work for connecting and handling events.
-The `execute(...)` method is overloaded, and supports custom headers as well. Each emits a WebSocketSession instance. Be aware though, browsers do not support custom headers in WS* connections.
+For this client, we will use the https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/socket/client/ReactorNettyWebSocketClient.html[`ReactorNettyWebSocketClient`] 
+request and handle our WebSocket connection.
+The `execute(...)` method lets us pass in a https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/socket/WebSocketHandler.html[`WebSocketHandler`] 
+to manage the session. Connecting to to the session's `receive()` stream will let us handle server source events, and produce our custom stream logic.
 
-A `WebSocketHandler` is configured to process the client session. We'll latch on to the session's `receive()` stream and produce output to the console. The doOn(...) handlers tell us about the session lifecycle events.
+NOTE: Be aware though, browsers do not support custom headers in ws:// websocket connections.
 
 .websocket_client
 [source,java]
 ----
     Mono<Void> wsConnectNetty(int id) {
         URI uri = getURI("ws://localhost:8080/ws/feed");
-
         return new ReactorNettyWebSocketClient()
                         .execute(uri, session -> session
                         .receive()
-                        .map(msg -> id + ".in: " + msg.getPayloadAsText())
-                        .doOnNext(log::info)
-                        .take(5)
-                        .doOnSubscribe(sub -> log.info("new client connection"))
-                        .doOnComplete(() -> log.info("connection complete!"))
-                        .then() // drop events from here.
+                        .map(WebSocketMessage::getPayloadAsText)
+                        .take(MAX_EVENTS)
+                        .doOnNext(txt -> log.info(id + ".IN: " + txt))
+                        .filter(txt -> is_prime(Long.valueOf(txt)))
+                        .flatMap(txt -> session.send(Mono.just(session.textMessage(txt))))
+                        .doOnSubscribe(subscriber -> log.info(id + ".OPEN"))
+                        .doFinally(signalType -> log.info(id + ".CLOSE"))
+                        .then() // only handle stream signals (term, complete, etc..)
                 )
     }
 ----
 
-Now we can setup the subscription method. Since our client execution returnd a type of `Mono<Void>`, we will compose a stream to emit many client instances that will survive on a single threaded event loop.  
-Our Flux will subscribe and block until each client has sent it's completion event.
-We have used blocking code for this demonstration, but its just not a good thing to see in production.  Use wisely.
+Now we can setup the subscription method. Since our client execution returnd a type of `Mono<Void>`, we will compose a stream to emit many client instances that will survive on a single threaded event loop. Using https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/CountDownLatch.html[`CountDownLatch`], we can avoid using the deadly https://projectreactor.io/docs/core/release/api/reactor/core/publisher/Mono.html#block--[`block()`] operator in Flux.
 
 .a_reactive_ws_stream
 [source,java]
 ----
     @Bean
     ApplicationRunner appRunner() {
-        return args ->
-                Flux.merge(
-                        Flux.fromStream(Stream.iterate(0, i -> i + 1)
-                                .limit(3)   // number of connections to make
-                        ).subscribeOn(Schedulers.single())
-                                .map(this::wsConnectNetty)
-                                .parallel()
-                )
-                        .blockLast();  // Don't go to sleep with this on :()
+        return args -> {
+            final CountDownLatch latch = new CountDownLatch(5);
+            Flux.merge(
+                    Flux.range(0, 5)
+                            .subscribeOn(Schedulers.single())
+                            .map(this::wsConnectNetty)
+                            .flatMap(sp -> sp.doOnTerminate(latch::countDown))
+                            .parallel()
+            )
+                    .subscribe();
+            latch.await(20, TimeUnit.SECONDS);
+        };
     }
 ----
 
@@ -104,19 +108,42 @@ I removed the `application.properties` for one property (and kept configuration 
 $ mvn spring-boot:run
 ----
 
-The output to this should be a stream of digits with '!' attached for prime numbers.  Because using `take(n)`, we should only see `n` events per client.
+Execute this application and you see the following output on the client side.
 
 .output
 [source,shell]
 ----
-2018-04-26 20:01:31.376  INFO 19397 --- [           main] c.example.socketclient.SocketClientApp   : Started SocketClientApp in 1.9 seconds (JVM running for 2.534)
-2018-04-26 20:01:31.543  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : new client connection
-2018-04-26 20:01:32.528  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.in: 0
-2018-04-26 20:01:33.527  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.in: 1
-2018-04-26 20:01:34.524  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.in: 2!
-2018-04-26 20:01:35.526  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.in: 3!
-2018-04-26 20:01:36.526  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.in: 4
-2018-04-26 20:01:36.533  INFO 19397 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : connection complete!
+INFO 5292 --- [           main] c.example.socketclient.SocketClientApp   : Started SocketClientApp in 1.735 seconds (JVM running for 2.464)
+INFO 5292 --- [ctor-http-nio-2] c.example.socketclient.SocketClientApp   : 1.OPEN
+INFO 5292 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.OPEN
+INFO 5292 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.IN: 0
+INFO 5292 --- [ctor-http-nio-2] c.example.socketclient.SocketClientApp   : 1.IN: 0
+INFO 5292 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.IN: 1
+INFO 5292 --- [ctor-http-nio-2] c.example.socketclient.SocketClientApp   : 1.IN: 1
+INFO 5292 --- [ctor-http-nio-2] c.example.socketclient.SocketClientApp   : 1.IN: 2
+INFO 5292 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.IN: 2
+INFO 5292 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.IN: 3
+INFO 5292 --- [ctor-http-nio-2] c.example.socketclient.SocketClientApp   : 1.IN: 3
+INFO 5292 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.IN: 4
+INFO 5292 --- [ctor-http-nio-2] c.example.socketclient.SocketClientApp   : 1.IN: 4
+INFO 5292 --- [ctor-http-nio-4] c.example.socketclient.SocketClientApp   : 0.CLOSE
+INFO 5292 --- [ctor-http-nio-2] c.example.socketclient.SocketClientApp   : 1.CLOSE
+INFO 5292 --- [       Thread-6] s.c.a.AnnotationConfigApplicationContext : Closing org.springframework.context.annotation.AnnotationConfigApplicationContext@6e75aa0d: startup date []; root of context hierarchy
+----
+
+Server Side should see similar output:
+
+.output_server
+[source,shell]
+----
+INFO 5260 --- [ctor-http-nio-4] c.e.socketserver.WebSocketServerApp      : Started.6fa56d2b
+INFO 5260 --- [ctor-http-nio-1] c.e.socketserver.WebSocketServerApp      : Started.35994779
+INFO 5260 --- [ctor-http-nio-4] c.e.socketserver.WebSocketServerApp      : Prime#: 2
+INFO 5260 --- [ctor-http-nio-1] c.e.socketserver.WebSocketServerApp      : Prime#: 2
+INFO 5260 --- [ctor-http-nio-1] c.e.socketserver.WebSocketServerApp      : Prime#: 3
+INFO 5260 --- [ctor-http-nio-4] c.e.socketserver.WebSocketServerApp      : Prime#: 3
+INFO 5260 --- [ctor-http-nio-1] c.e.socketserver.WebSocketServerApp      : Complete.35994779
+INFO 5260 --- [ctor-http-nio-4] c.e.socketserver.WebSocketServerApp      : Complete.6fa56d2b
 ----
 
 == Notes
