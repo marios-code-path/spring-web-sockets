@@ -62,7 +62,7 @@ Additionally, we'll make use of the `do...()` handlers to react to session event
 ==== WEB Friendly - URL Paths, CORS
 Crete an instance of https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/handler/SimpleUrlHandlerMapping.html[`SimpleUrlHandlerMapping`], and add Mappings for URL to WebSocketHandler exchanges.
 Thus, a similar configuration option exists for CORS. To accomplish this, compose a simple default map for all URLs `*` given; this is a simplistic program.
-CORS configurations are highly sensitive to the service implementor's nature, and come in specific variances that are outside the scope of this document.
+https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS[CORS] configurations are highly sensitive to the service implementor's nature, and come in specific variances that are outside the scope of this document.
 
 .uri_handler_mapping
 [source,java]
