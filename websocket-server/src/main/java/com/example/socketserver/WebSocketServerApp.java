@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import org.springframework.web.reactive.HandlerMapping;
@@ -26,7 +27,7 @@ import java.util.stream.Stream;
 @Slf4j
 public class WebSocketServerApp {
     @Bean
-    WebSocketHandlerAdapter socketHandlerAdapter() {
+    WebSocketHandlerAdapter webSocketHandlerAdapter() {
         return new WebSocketHandlerAdapter();
     }
 
@@ -45,10 +46,12 @@ public class WebSocketServerApp {
     }
 
     @Bean
-    HandlerMapping simpleUrlHandlerMapping() {
+    HandlerMapping webSocketURLMapping() {
         SimpleUrlHandlerMapping simpleUrlHandlerMapping = new SimpleUrlHandlerMapping();
-        simpleUrlHandlerMapping.setUrlMap(Collections.singletonMap("/ws/feed",
-                webSocketHandler()));
+        simpleUrlHandlerMapping.setUrlMap(
+                Collections.singletonMap("/ws/feed", webSocketHandler()));
+        simpleUrlHandlerMapping.setCorsConfigurations(
+                Collections.singletonMap("*", new CorsConfiguration().applyPermitDefaultValues()));
         simpleUrlHandlerMapping.setOrder(10);
         return simpleUrlHandlerMapping;
     }

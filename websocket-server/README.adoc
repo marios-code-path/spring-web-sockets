@@ -30,41 +30,50 @@ To get started, wire in a https://docs.spring.io/spring/docs/4.0.0.M1_to_4.2.0.M
     }
 ----
 
-Next, create the websocket session handler. The simplest way to do this to use the functional interface for `WebSocketHandler` and implement it's handle method to manage our stream response. In this, we will use the `Flux.interval` operator and push it's output back to the session.
-The simplest way is to https://projectreactor.io/docs/core/release/api/reactor/core/publisher/Flux.html#map-java.util.function.Function-[`Flux.map` or transform] 
-the integer output into a string then compose a message using https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/socket/WebSocketSession.html#textMessage-java.lang.String-[`session.textMessage(String)`] or one of it's similar methods For this response.
+===== Sending events down to a client
+Next, fill in the WebSocket session handler. The simplest way to do this to use the functional interface for https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/socket/WebSocketHandler.html[`WebSocketHandler`] and implement it's `handle()` method to manage our stream response. In this, we will use the https://projectreactor.io/docs/core/release/api/reactor/core/publisher/Flux.html#interval-java.time.Duration-[`Flux.interval`] operator and push it's output to the session for the client to consume.
+Simply https://projectreactor.io/docs/core/release/api/reactor/core/publisher/Flux.html#map-java.util.function.Function-[transform]/map the integer output as a String and send it to the
+https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/socket/WebSocketSession.html#textMessage-java.lang.String-[`session.textMessage(String)`] or one of it's overrides depending on content for response.
 
 .socket_session_handler
 [source,java]
 ----
-    WebSocketHandler webSocketHandler(ConnectableFlux<String> publisher) {
+    WebSocketHandler webSocketHandler() {
         return session ->
-                session.send(publisher.map(session::textMessage))
-                        .and(
-                                session.receive()
-                                        .map(WebSocketMessage::getPayloadAsText)
-                                        .doOnSubscribe(sub -> log.info(session.getId() + ".CONNECT"))
-                                        .doFinally(sig -> log.info(session.getId() + ".DISCONNECT"))
-                        );
+                session.send(
+                        Flux.interval(Duration.ofSeconds(1))
+                                .map(n -> n.toString())
+                                .map(session::textMessage)
+                ).and(session.receive()
+                        .map(WebSocketMessage::getPayloadAsText)
+                        .doOnNext(msg -> log.info("Prime#: " + msg))
+                        .doOnSubscribe(sub -> log.info("Started." + session.getId()))
+                        .doFinally(sig -> log.info("Complete." + session.getId()))
+                );
     }
+
 ----
 
+==== Composing additional session-oriented operations
 WebSocket Sessions are wraped within the reactive https://projectreactor.io/docs/core/release/api/reactor/core/publisher/Mono.html[`Mono`] type that supports the the https://projectreactor.io/docs/core/release/api/reactor/core/publisher/Mono.html#and-org.reactivestreams.Publisher-[`and()`] operator for chaining other publisher's termination signal.
-We expect a client to respond with numbers it finds as prime. So, compose the extra step with the `session.receive()` publisher that emits, and logs messages to console.
+We expect a client to respond with numbers it finds as prime. So, compose the extra step with the `session.receive()` publisher that emits, and logs client-origin messages to console.
 Additionally, we'll make use of the `do...()` handlers to react to session events so we can do things like clean up resources after the connection is over.
 
-Finally, to map URI's to our handler we wire in a reactive `SimpleUrlHandlerMapping` to delegate socket connections on URL `/ws/feed`.
+==== WEB Friendly - URL Paths, CORS
+Crete an instance of https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/handler/SimpleUrlHandlerMapping.html[`SimpleUrlHandlerMapping`], and add `URL` to `WebSocketHandler` mappings.
+The same mapping style exists for CORS, thus we'll just compose a simple default map for all URL's given; this is a simplistic program.
+CORS configurations are highly sensitive to the service implementor's nature, and come in specific variances that are outside the scope of this document.
 
 .uri_handler_mapping
 [source,java]
 ----
     @Bean
-    HandlerMapping simpleUrlHandlerMapping() {
+    HandlerMapping webSocketURLMapping() {
         SimpleUrlHandlerMapping simpleUrlHandlerMapping = new SimpleUrlHandlerMapping();
-        RequestMappingHandlerMapping foo = new RequestMappingHandlerMapping();
-        simpleUrlHandlerMapping.setUrlMap(Collections.singletonMap("/ws/feed",
-                webSocketHandler()));
-        simpleUrlHandlerMapping.setOrder(10);
+        simpleUrlHandlerMapping.setUrlMap(
+                Collections.singletonMap("/ws/feed", webSocketHandler()));
+        simpleUrlHandlerMapping.setCorsConfigurations(
+                Collections.singletonMap("*", new CorsConfiguration().applyPermitDefaultValues()));
         return simpleUrlHandlerMapping;
     }
 ----
