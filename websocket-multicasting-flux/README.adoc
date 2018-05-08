@@ -12,7 +12,7 @@ Mario Gray <mgray@pivotal.io>
 This is the multi-casting Flux variation of the standard WebSocket Service seen https://github.com/marios-code-path/spring-web-sockets/tree/master/websocket-server[here]
 
 == WebSocket Server
-Spring's WebSocket API is new in Spring 5, and enables reactive event and connection handling. We will introduce a single WebSocket handler, and show whats needed to get started using Spring's `WebSocketServer` support.
+Spring's reactive WebSocket API is a part of Spring 5's WebFlux API. This enables reactive event and connection handling. We will introduce a single WebSocket handler, and show whats needed to get started using Spring's `WebSocketServer` support.
 You'll want to start a new Spring project using start.spring.io[this link] to autogenerate a maven based POM.  If you go with a different approach, just make sure to 
 have `webflux`, and `lombok` projects.
 
@@ -53,16 +53,7 @@ Using `Flux.interval` and `zipWith` in combination allows us to ensure a steady 
                                 })
                 );
     }
-// bruteforced search :p
-    boolean is_prime(long num) {
-        if (num <= 1) return false;
-        if (num % 2 == 0 && num > 2) return false;
-        for (int i = 3; i < num / 2; i += 2) {
-            if (num % i == 0)
-                return false;
-        }
-        return true;
-    }    
+    
 ----
 
 Using `and` operator lets us join this session with a `receive()` flow that reacts to incoming messages. In this case, we dont have any need for it, but it's good to illustrate this side of functionality for the curious.
@@ -100,7 +91,7 @@ Start the application:
 ----
 $ mvn clean spring-boot:run
 ...
-2018-04-26 15:36:54.330  INFO 10671 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 8080
+INFO 10671 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 8080
 ----
 
 Now we are ready to implement the client, and demonstrate the new server we just stood up!

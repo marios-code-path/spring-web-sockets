@@ -89,7 +89,7 @@ Start the application:
 ----
 $ mvn clean spring-boot:run
 ...
-2018-04-26 15:36:54.330  INFO 10671 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 8080
+INFO 10671 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 8080
 ----
 
 Now we are ready to implement the https://github.com/marios-code-path/spring-web-sockets/tree/master/websocket-client[client], and talk to this service.
