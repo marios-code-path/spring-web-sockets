@@ -12,7 +12,8 @@ Mario Gray <mgray@pivotal.io>
 This is the multi-casting Flux variation of the standard WebSocket Service seen https://github.com/marios-code-path/spring-web-sockets/tree/master/websocket-server[here]
 
 == WebSocket Server
-Spring's reactive WebSocket API is a part of Spring 5's WebFlux API. This enables reactive event and connection handling. We will introduce a single WebSocket handler, and show whats needed to get started using Spring's `WebSocketServer` support.
+Spring's reactive [WebSocket] API is a part of Spring 5's WebFlux API which bring https://www.reactivemanifesto.org/[reactive] flow control to our projects via https://projectreactor.io/[project reactor].
+We will introduce a single WebSocket handler, and show whats needed to get started using Spring's `WebSocketServer` support.
 You'll want to start a new Spring project using start.spring.io[this link] to autogenerate a maven based POM.  If you go with a different approach, just make sure to 
 have `webflux`, and `lombok` projects.
 

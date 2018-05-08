@@ -16,9 +16,8 @@ WebSockets is an https://tools.ietf.org/html/rfc6455[IETF] standard and https://
 #A sample graph of services and then of a mix of clients that connect
 
 == WebSocket Server
-Spring's WebSocket API is new in Spring 5, and enables reactive event and connection handling. We will introduce a single WebSocket handler, and show whats needed to get started using Spring's `WebSocketServer` support.
-You'll want to start a new Spring project using start.spring.io[this link] to autogenerate a maven based POM.  If you go with a different approach, just make sure to 
-have `webflux`, and `lombok` projects.
+Spring's WebSocket API is new in Spring 5, and enables service construction in a Functional Reactive Programing method.
+We will introduce a single WebSocket handler, and show whats needed to get started using Spring's reactive https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/socket/server/WebSocketService.html[`WebSocketService`] support.
 
 To get started, wire in a https://docs.spring.io/spring/docs/4.0.0.M1_to_4.2.0.M2/Spring%20Framework%204.0.0.M1/org/springframework/web/socket/adapter/WebSocketHandlerAdapter.html[`WebSocketHandlerAdapter`] to handle our web socket handshake, upgrade, and other connection details.
 
@@ -38,18 +37,15 @@ the integer output into a string then compose a message using https://docs.sprin
 .socket_session_handler
 [source,java]
 ----
-    WebSocketHandler webSocketHandler() {
+    WebSocketHandler webSocketHandler(ConnectableFlux<String> publisher) {
         return session ->
-                session.send(
-                        Flux.interval(Duration.ofSeconds(1))
-                                .map(n -> n.toString())
-                                .map(session::textMessage)
-                ).and(session.receive()
-                        .map(WebSocketMessage::getPayloadAsText)
-                        .doOnNext(msg -> log.info("Prime#: " + msg))
-                        .doOnSubscribe(sub -> log.info("Started." + session.getId()))
-                        .doFinally(sig -> log.info("Complete." + session.getId()))
-                );
+                session.send(publisher.map(session::textMessage))
+                        .and(
+                                session.receive()
+                                        .map(WebSocketMessage::getPayloadAsText)
+                                        .doOnSubscribe(sub -> log.info(session.getId() + ".CONNECT"))
+                                        .doFinally(sig -> log.info(session.getId() + ".DISCONNECT"))
+                        );
     }
 ----
 
