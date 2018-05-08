@@ -1,4 +1,4 @@
-= Create WebSocket Servers with Spring WebSocketServer
+= Hot/cold Publishers with Spring WebSocketService
 Mario Gray <mgray@pivotal.io>
 :Author Initials: MVG
 :toc:
@@ -14,10 +14,11 @@ This is the multi-casting Flux variation of the standard WebSocket Service seen 
 == WebSocket Server
 Spring's reactive [WebSocket] API is a part of Spring 5's WebFlux API which bring https://www.reactivemanifesto.org/[reactive] flow control to our projects via https://projectreactor.io/[project reactor].
 We will introduce a single WebSocket handler, and show whats needed to get started using Spring's `WebSocketServer` support.
-You'll want to start a new Spring project using start.spring.io[this link] to autogenerate a maven based POM.  If you go with a different approach, just make sure to 
+
+You'll want to start a new Spring project using start.spring.io[this link] to autogenerate a maven based POM.  If you go with a different approach, just make sure to
 have `webflux`, and `lombok` projects.
 
-First, wire in a `WebSocketHandlerAdapter` to handle our web socket handshake, upgrade, and other connection details.
+First, wire in a https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/socket/server/support/WebSocketHandlerAdapter.html[`WebSocketHandlerAdapter`] to handle our web socket handshake, upgrade, and other connection details.
 
 .socket_handler_adapter
 [source,java]
@@ -28,37 +29,20 @@ First, wire in a `WebSocketHandlerAdapter` to handle our web socket handshake, u
     }
 ----
 
-To get started, we will need a method for handling a websocket session. The simplest way to do this is to create a `WebSocketHandler` instance 
-that calls `session.send` with our custom stream logic. For this handler, on each session we will stream 100 integers and append bang '!' for primes.
-Using `Flux.interval` and `zipWith` in combination allows us to ensure a steady frequency of events.
-
+Next, create the WebSocket session handler. The simplest way to do this to use the functional interface for https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/socket/WebSocketHandler.html[`WebSocketHandler`] and implement it's handle method to manage our stream response. In this, we will use the https://projectreactor.io/docs/core/release/api/reactor/core/publisher/Flux.html#interval-java.time.Duration-[`Flux.interval`] operator and push it's output back to the session.
 
 .socket_session_handler
 [source,java]
 ----
-    WebSocketHandler webSocketHandler() {
+    WebSocketHandler webSocketHandler(ConnectableFlux<String> publisher) {
         return session ->
-                session.send(
-                        Flux.interval(Duration.ofSeconds(1))
-                                .zipWith(
-                                        Flux.fromStream(Stream.iterate(0, i -> i + 1).limit(100))
-                                        , (x, y) -> y + (is_prime(y) ? "!" : ""))
-                                .map(session::textMessage)
-                ).and(
-                        session.receive()
-                                .map(WebSocketMessage::getPayloadAsText)
-                                .doOnSubscribe(sub -> log.info("socket session started"))
-                                .doFinally(sig -> {
-                                    log.info("session complete:" + sig.toString());
-                                    session.close();
-                                })
-                );
+                session.send(publisher.map(session::textMessage))
+                        .doOnSubscribe(sub -> log.info(session.getId() + ".CONNECT"))
+                        .doFinally(sig -> log.info(session.getId() + ".DISCONNECT"));
     }
-    
 ----
 
-Using `and` operator lets us join this session with a `receive()` flow that reacts to incoming messages. In this case, we dont have any need for it, but it's good to illustrate this side of functionality for the curious.
-Our session makes use of the `doOn...` signal handlers used to respond to connection lifecycle events. Always make sure to call `session.close()` or else you end up with leaks.
+We utilize the `ConnectableFlux<String>` to `hot` publish our tick data to websocket clients.  That is, in contrast to the last demonstration which produced a `cold` published flow.
 
 Finally, to map URI's to our handler we wire in a reactive `SimpleUrlHandlerMapping` to delegate socket connections on URL `/ws/feed`.
 

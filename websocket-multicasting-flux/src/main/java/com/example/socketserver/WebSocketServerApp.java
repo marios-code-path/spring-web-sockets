@@ -37,18 +37,14 @@ public class WebSocketServerApp {
 
     @Bean
     ApplicationRunner appRunner() {
-        return args -> integerPublisher().connect();
+        return args -> integerPublisher().autoConnect(2);
     }
 
     WebSocketHandler webSocketHandler(ConnectableFlux<String> publisher) {
         return session ->
                 session.send(publisher.map(session::textMessage))
-                        .and(
-                                session.receive()
-                                        .map(WebSocketMessage::getPayloadAsText)
-                                        .doOnSubscribe(sub -> log.info(session.getId() + ".CONNECT"))
-                                        .doFinally(sig -> log.info(session.getId() + ".DISCONNECT"))
-                        );
+                        .doOnSubscribe(sub -> log.info(session.getId() + ".CONNECT"))
+                        .doFinally(sig -> log.info(session.getId() + ".DISCONNECT"));
     }
 
     @Bean

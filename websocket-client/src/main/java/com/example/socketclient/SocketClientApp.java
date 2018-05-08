@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 @SpringBootApplication
 @Slf4j
-public class SocketClientApp {
+public class  SocketClientApp {
     private final int NUM_CLIENTS = 2;
     private final int MAX_EVENTS = 5;
 
