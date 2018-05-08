@@ -60,8 +60,8 @@ We expect a client to respond with numbers it finds as prime. So, compose the ex
 Additionally, we'll make use of the `do...()` handlers to react to session events so we can do things like clean up resources after the connection is over.
 
 ==== WEB Friendly - URL Paths, CORS
-Crete an instance of https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/handler/SimpleUrlHandlerMapping.html[`SimpleUrlHandlerMapping`], and add `URL` to `WebSocketHandler` mappings.
-The same mapping style exists for CORS, thus we'll just compose a simple default map for all URL's given; this is a simplistic program.
+Crete an instance of https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/handler/SimpleUrlHandlerMapping.html[`SimpleUrlHandlerMapping`], and add Mappings for URL to WebSocketHandler exchanges.
+Thus, a similar configuration option exists for CORS. To accomplish this, compose a simple default map for all URLs `*` given; this is a simplistic program.
 CORS configurations are highly sensitive to the service implementor's nature, and come in specific variances that are outside the scope of this document.
 
 .uri_handler_mapping
