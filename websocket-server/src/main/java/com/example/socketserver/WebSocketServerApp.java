@@ -40,8 +40,6 @@ public class WebSocketServerApp {
                 ).and(session.receive()
                         .map(WebSocketMessage::getPayloadAsText)
                         .doOnNext(msg -> log.info("Prime#: " + msg))
-                        .doOnSubscribe(sub -> log.info("Started." + session.getId()))
-                        .doFinally(sig -> log.info("Complete." + session.getId()))
                 );
     }
 

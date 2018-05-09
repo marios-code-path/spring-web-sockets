@@ -5,20 +5,21 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import org.springframework.stereotype.Component;
+import org.springframework.lang.Nullable;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.reactive.HandlerMapping;
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter;
-import reactor.core.publisher.ConnectableFlux;
+import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.Collections;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 @SpringBootApplication
 @Slf4j
@@ -29,29 +30,40 @@ public class WebSocketServerApp {
     }
 
     @Bean
-    ConnectableFlux<String> integerPublisher() {
-        return Flux.interval(Duration.ofSeconds(1))
+    Flux<String> integerPublisher() {
+        //next error complete sigs only
+        DirectProcessor<String> processor = DirectProcessor.create();
+
+        return processor.interval(Duration.ofSeconds(1))
                 .map(x -> x.toString())
-                .publish();
+                .publish()
+                .autoConnect();
     }
 
     @Bean
     ApplicationRunner appRunner() {
-        return args -> integerPublisher().autoConnect(2);
-    }
-
-    WebSocketHandler webSocketHandler(ConnectableFlux<String> publisher) {
-        return session ->
-                session.send(publisher.map(session::textMessage))
-                        .doOnSubscribe(sub -> log.info(session.getId() + ".CONNECT"))
-                        .doFinally(sig -> log.info(session.getId() + ".DISCONNECT"));
+        return args -> integerPublisher();
     }
 
     @Bean
-    HandlerMapping simpleUrlHandlerMapping(ConnectableFlux<String> publisher) {
+    public WebSocketHandler webSocketHandler() {
+        return session ->
+                session.send(integerPublisher().map(session::textMessage))
+                        .onTerminateDetach()
+                        .doOnSubscribe(sub -> log.info(session.getId() + " OPEN."))
+                        .and(
+                                session.receive()
+                                        .map(WebSocketMessage::getPayloadAsText)
+                                        .doOnNext(System.out::println)
+                                        .doFinally(sig -> log.info(session.getId() + " CLOSE."))
+                        );
+    }
+
+    @Bean
+    HandlerMapping simpleUrlHandlerMapping(Flux<String> publisher) {
         SimpleUrlHandlerMapping simpleUrlHandlerMapping = new SimpleUrlHandlerMapping();
         simpleUrlHandlerMapping.setUrlMap(Collections.singletonMap("/ws/feed",
-                webSocketHandler(publisher)));
+                webSocketHandler()));
         simpleUrlHandlerMapping.setOrder(10);
         return simpleUrlHandlerMapping;
     }

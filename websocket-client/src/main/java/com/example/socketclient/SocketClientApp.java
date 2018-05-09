@@ -38,19 +38,20 @@ public class  SocketClientApp {
         return null;
     }
 
-    Mono<Void> wsConnectNetty(int id) {
+    Mono<Void> wsConnectNetty() {
         URI uri = getURI(uriString);
         return new ReactorNettyWebSocketClient().execute(uri,
                 session -> session
                         .receive()
                         .map(WebSocketMessage::getPayloadAsText)
                         .take(MAX_EVENTS)
-                        .doOnNext(txt -> log.info(id + ".IN: " + txt))
+                        .doOnNext(txt -> log.info(session.getId() + ".IN: " + txt))
                         .filter(txt -> is_prime(Long.valueOf(txt)))
                         .flatMap(txt -> session.send(Mono.just(session.textMessage(txt))))
-                        .doOnSubscribe(subscriber -> log.info(id + ".OPEN"))
-                        .doFinally(signalType -> log.info(id + ".CLOSE"))
+                        .doOnSubscribe(subscriber -> log.info(session.getId() + ".OPEN"))
+                        .doFinally(signalType -> {session.close(); log.info(session.getId() + ".CLOSE"); })
                         .then()
+
         );
     }
 
@@ -72,8 +73,8 @@ public class  SocketClientApp {
             Flux.merge(
                     Flux.range(0, NUM_CLIENTS)
                             .subscribeOn(Schedulers.single())
-                            .map(this::wsConnectNetty)
-                            .flatMap(sp -> sp.doOnTerminate(latch::countDown))
+                            .map(n -> wsConnectNetty()
+                                        .doOnTerminate(latch::countDown))
                             .parallel()
             )
                     .subscribe();
