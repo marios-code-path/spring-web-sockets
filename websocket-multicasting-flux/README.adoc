@@ -96,5 +96,3 @@ Now we are ready to implement the client, and demonstrate the new server we just
 * Theory
 ** http://reactivex.io/documentation/operators.html
 ** https://github.com/Reactive-Extensions/RxJS/blob/master/doc/api/core/operators/debounce.md
-
-

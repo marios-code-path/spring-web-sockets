@@ -60,7 +60,7 @@ We expect a client to respond with numbers it finds as prime. So, compose the ex
 Additionally, we'll make use of the `do...()` handlers to react to session events so we can do things like clean up resources after the connection is over.
 
 ==== WEB Friendly - URL Paths, CORS
-Crete an instance of https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/handler/SimpleUrlHandlerMapping.html[`SimpleUrlHandlerMapping`], and add Mappings for URL to WebSocketHandler exchanges.
+Create an instance of https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/reactive/handler/SimpleUrlHandlerMapping.html[`SimpleUrlHandlerMapping`], and add Mappings for URL to WebSocketHandler exchanges.
 Thus, a similar configuration option exists for CORS. To accomplish this, compose a simple default map for all URLs `*` given; this is a simplistic program.
 https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS[CORS] configurations are highly sensitive to the service implementor's nature, and come in specific variances that are outside the scope of this document.
 
@@ -114,5 +114,3 @@ Now we are ready to implement the https://github.com/marios-code-path/spring-web
 * Theory
 ** http://reactivex.io/documentation/operators.html
 ** https://github.com/Reactive-Extensions/RxJS/blob/master/doc/api/core/operators/debounce.md
-
-

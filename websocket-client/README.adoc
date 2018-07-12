@@ -16,8 +16,6 @@ A reactive client means that we can respond to backpressure, and weild the `Obse
 We can use our favorite Spring Application Initializr http://start.spring.io[start dot spring dot io] to generate the application.
 To get started, any project must have the following dependencies:
 
-
-
 .dependencies_for_webflux
 [source,xml]
 ----
@@ -171,5 +169,3 @@ Hope you find this demonstration useful. Send your feedback to me via email twit
 * Theory
 ** http://reactivex.io/documentation/operators.html
 ** https://github.com/Reactive-Extensions/RxJS/blob/master/doc/api/core/operators/debounce.md
-
-
